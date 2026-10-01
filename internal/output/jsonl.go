@@ -65,11 +65,25 @@ type Logger struct {
 	w       *bufio.Writer
 	quiet   bool
 	verbose bool
+	color   bool
 	mu      sync.Mutex
 }
 
 func NewLogger(f *os.File, quiet, verbose bool) *Logger {
-	return &Logger{w: bufio.NewWriter(f), quiet: quiet, verbose: verbose}
+	color := false
+	if _, noColor := os.LookupEnv("NO_COLOR"); !noColor && os.Getenv("TERM") != "dumb" {
+		if info, err := f.Stat(); err == nil && info.Mode()&os.ModeCharDevice != 0 {
+			color = true
+		}
+	}
+	return &Logger{w: bufio.NewWriter(f), quiet: quiet, verbose: verbose, color: color}
+}
+
+func (l *Logger) paint(code, text string) string {
+	if !l.color {
+		return text
+	}
+	return "\033[" + code + "m" + text + "\033[0m"
 }
 
 func (l *Logger) Info(format string, args ...interface{}) {
@@ -78,21 +92,21 @@ func (l *Logger) Info(format string, args ...interface{}) {
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	fmt.Fprintf(l.w, "[*] "+format+"\n", args...)
+	fmt.Fprintf(l.w, "%s %s\n", l.paint("1;36", "[>]"), fmt.Sprintf(format, args...))
 	l.w.Flush()
 }
 
 func (l *Logger) Warn(format string, args ...interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	fmt.Fprintf(l.w, "[!] "+format+"\n", args...)
+	fmt.Fprintf(l.w, "%s %s\n", l.paint("1;33", "[!]"), fmt.Sprintf(format, args...))
 	l.w.Flush()
 }
 
 func (l *Logger) Err(format string, args ...interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	fmt.Fprintf(l.w, "[✗] "+format+"\n", args...)
+	fmt.Fprintf(l.w, "%s %s\n", l.paint("1;31", "[x]"), fmt.Sprintf(format, args...))
 	l.w.Flush()
 }
 
@@ -102,14 +116,14 @@ func (l *Logger) Debug(format string, args ...interface{}) {
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	fmt.Fprintf(l.w, "[·] "+format+"\n", args...)
+	fmt.Fprintf(l.w, "%s %s\n", l.paint("2;37", "[.]"), fmt.Sprintf(format, args...))
 	l.w.Flush()
 }
 
 func (l *Logger) Ok(format string, args ...interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	fmt.Fprintf(l.w, "[✓] "+format+"\n", args...)
+	fmt.Fprintf(l.w, "%s %s\n", l.paint("1;32", "[+]"), fmt.Sprintf(format, args...))
 	l.w.Flush()
 }
 
@@ -119,7 +133,10 @@ func (l *Logger) Banner(version, target string) {
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	fmt.Fprintf(l.w, "bypass403 v%s\nTarget: %s\n\n", version, target)
+	fmt.Fprintf(l.w, "\n  %s%s  %s\n", l.paint("1;31", "BYPASS"), l.paint("1;36", "403"), l.paint("2;37", "// OFFENSIVE HTTP TESTING"))
+	fmt.Fprintf(l.w, "  %s\n", l.paint("2;37", "ACCESS-CONTROL ASSESSMENT"))
+	fmt.Fprintf(l.w, "  %s %s\n", l.paint("1;36", "VERSION"), version)
+	fmt.Fprintf(l.w, "  %s %s\n\n", l.paint("1;36", "TARGET "), l.paint("1;37", target))
 	l.w.Flush()
 }
 
@@ -129,15 +146,18 @@ func (l *Logger) FindingLine(color string, r techniques.Result) {
 	status := ""
 	if r.Response != nil {
 		status = fmt.Sprintf("[%d]", r.Response.Status)
+		if l.color {
+			status = color + status + "\033[0m"
+		}
 	}
-	fmt.Fprintf(l.w, "[HIT] %s %s\n", status, r.Payload.Description)
+	fmt.Fprintf(l.w, "%s %s %s\n", l.paint("1;32", "[HIT]"), status, r.Payload.Description)
 	l.w.Flush()
 }
 
 func (l *Logger) Summary(findings []techniques.Result, cal interface{}, fp interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	fmt.Fprintf(l.w, "\nSummary: %d findings\n", len(findings))
+	fmt.Fprintf(l.w, "\n  %s  %s\n", l.paint("1;36", "SCAN COMPLETE"), l.paint("1;32", fmt.Sprintf("%d findings", len(findings))))
 	l.w.Flush()
 }
 

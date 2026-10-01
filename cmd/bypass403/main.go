@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -59,6 +60,12 @@ func main() {
 		flag.Usage()
 		os.Exit(3)
 	}
+	targetURL, err := normalizeTarget(*target)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[!] Invalid target URL: %v\n", err)
+		os.Exit(3)
+	}
+	*target = targetURL
 
 	// Load configuration
 	cfg, err := config.LoadOrDefault(*configFile)
@@ -142,7 +149,7 @@ func main() {
 		os.Exit(2)
 	}
 	logger.Info("Baseline: %d (size=%d, time=%.3fs)",
-		cal.BaselineStatus, cal.BaselineSize, cal.BaselineTime)
+		cal.BaselineStatus, cal.BaselineSize, cal.BaselineTime.Seconds())
 	if cal.Soft404 {
 		logger.Warn("Soft-404 detected (%d)", cal.Soft404Status)
 	}
@@ -296,6 +303,25 @@ func (h headerFlag) Map() map[string]string {
 		}
 	}
 	return m
+}
+
+func normalizeTarget(target string) (string, error) {
+	target = strings.TrimSpace(target)
+	if strings.HasPrefix(target, "//") {
+		target = "https:" + target
+	} else if !strings.Contains(target, "://") {
+		target = "https://" + target
+	}
+
+	u, err := url.Parse(target)
+	if err != nil {
+		return "", err
+	}
+	u.Scheme = strings.ToLower(u.Scheme)
+	if (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return "", fmt.Errorf("target must be an HTTP(S) URL with a host")
+	}
+	return u.String(), nil
 }
 
 func parseTechniques(s string, available []string) []string {
