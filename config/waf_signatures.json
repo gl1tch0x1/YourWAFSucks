@@ -1,0 +1,27 @@
+{
+  "cloudflare": {
+    "headers": ["cf-ray", "cf-cache-status", "cf-request-id"],
+    "server": "cloudflare",
+    "body_markers": ["attention required", "cloudflare ray id"]
+  },
+  "akamai": {
+    "headers": ["x-akamai-", "x-akamai-transformed"],
+    "server": "akamaighost"
+  },
+  "aws": {
+    "headers": ["x-amz-", "x-amzn-"],
+    "body_markers": ["aws waf", "request blocked"]
+  },
+  "imperva": {
+    "headers": ["x-iinfo", "x-cdn"],
+    "server": "incapsula"
+  },
+  "sucuri": {
+    "headers": ["x-sucuri-"],
+    "server": "sucuri"
+  },
+  "f5": {
+    "headers": ["x-wa-info", "x-cnection"],
+    "server": "bigip"
+  }
+}

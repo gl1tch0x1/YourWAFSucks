@@ -1,0 +1,9 @@
+# Proxy List for bypass403
+# Format: protocol://host:port
+# Supported protocols: http, https, socks5
+
+# Example proxies (replace with your own)
+# http://proxy1.example.com:8080
+# http://proxy2.example.com:3128
+# socks5://proxy3.example.com:1080
+# https://secure-proxy.example.com:443

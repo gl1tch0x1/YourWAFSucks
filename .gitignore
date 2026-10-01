@@ -1,0 +1,30 @@
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+*.bin
+
+# Local env / virtual environments
+.venv/
+venv/
+.env
+.env.*
+__pycache__/
+.pytest_cache/
+
+# Editor / OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Test / coverage output
+coverage/
+*.cover
+*.log
+
+# Generated reports
+reports/
+*.jsonl
+*.html

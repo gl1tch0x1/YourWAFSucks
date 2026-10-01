@@ -1,0 +1,206 @@
+# bypass403 Configuration File
+# Global settings for advanced bypass testing
+
+general:
+  # Target configuration
+  target: ""
+  timeout: 10s
+  max_retries: 2
+  dry_run: false
+
+  # Concurrency settings
+  workers: 20
+  rate_limit: 100  # requests per second
+  burst: 50
+
+  # Output settings
+  output_path: ""
+  quiet: false
+  verbose: false
+  log_level: "info"  # debug, info, warn, error
+
+  # Replay verification
+  no_retest: false
+  replay_attempts: 2
+
+# Advanced techniques configuration
+techniques:
+  # Enable/disable specific techniques
+  enabled:
+    - headers
+    - verbs
+    - endpaths
+    - midpaths
+    - encoding
+    - raw
+    - protocol
+    - advanced
+    - smt
+    - unicode
+    - case_manipulation
+
+  # Technique-specific settings
+  headers:
+    bypass_ip: "127.0.0.1"
+    custom_headers: {}
+
+  verbs:
+    include_dangerous: true  # Include methods like TRACE, DEBUG
+    custom_methods: []
+
+  encoding:
+    double_encode: true
+    mixed_case: true
+    unicode_normalize: true
+
+  raw:
+    enable_desync: true
+    enable_duplicate_headers: true
+    enable_absolute_uri: true
+
+# WAF and proxy configuration
+waf:
+  # WAF detection mode
+  detection_mode: "aggressive"  # passive, normal, aggressive
+  bypass_mode: "evasive"  # standard, evasive, stealth
+
+  # Signature files
+  frontend_signatures: "config/frontend_signatures.json"
+  waf_signatures: "config/waf_signatures.json"
+
+  # WAF-specific bypasses
+  cloudflare:
+    enable_ua_rotation: true
+    enable_cookie_bypass: true
+    challenge_bypass: false
+
+  akamai:
+    enable_edge_auth: true
+    enable_ghost_headers: true
+
+# Proxy configuration
+proxy:
+  # Single proxy
+  url: ""
+
+  # Proxy rotation
+  rotation:
+    enabled: false
+    proxies_file: "config/proxies.txt"
+    rotation_strategy: "round_robin"  # round_robin, random, least_used
+    health_check: true
+    failover: true
+
+  # Proxy types
+  supported_protocols:
+    - http
+    - https
+    - socks5
+
+# Scoring and analysis
+scoring:
+  # Score thresholds
+  interesting_threshold: 40
+  high_confidence_threshold: 70
+  critical_threshold: 90
+
+  # Analysis features
+  enable_ml_scoring: false
+  enable_pattern_analysis: true
+  enable_similarity_detection: true
+
+  # Replay verification
+  replay_bonus: 10
+  replay_penalty: -20
+
+# Advanced evasion
+evasion:
+  # User-Agent rotation
+  ua_rotation:
+    enabled: true
+    ua_file: "config/user_agents.txt"
+    rotation_strategy: "random"
+
+  # Cookie manipulation
+  cookie_manipulation:
+    enabled: true
+    strip_session: false
+    add_random: true
+
+  # Timing-based evasion
+  timing:
+    random_delays: true
+    delay_range: "100ms-1s"
+    jitter: true
+
+  # Header randomization
+  header_randomization:
+    enabled: true
+    random_order: true
+    add_noise_headers: true
+
+# Reporting
+reporting:
+  # Output formats
+  formats:
+    - jsonl
+    - json
+    - html
+    - markdown
+
+  # Report content
+  include_request: true
+  include_response: true
+  include_headers: true
+  include_timing: true
+  include_score_breakdown: true
+
+  # Webhook notifications
+  webhook:
+    enabled: false
+    url: ""
+    method: "POST"
+    headers: {}
+    on_success_only: true
+
+# Security and compliance
+security:
+  # Rate limiting to avoid detection
+  adaptive_rate_limiting: true
+  backoff_on_error: true
+  max_errors_before_pause: 10
+
+  # Request signature randomization
+  randomize_timing: true
+  randomize_headers: true
+
+  # Safety limits
+  max_requests_per_target: 10000
+  max_duration: "1h"
+
+# Integration
+integration:
+  # CI/CD integration
+  cicd:
+    enabled: false
+    format: "junit"  # junit, sarif, github
+    output_dir: "reports/"
+
+  # Security platform integration
+  platforms:
+    slack:
+      enabled: false
+      webhook_url: ""
+      channel: "#security"
+
+    jira:
+      enabled: false
+      api_url: ""
+      project: "SEC"
+      issue_type: "Bug"
+
+    github:
+      enabled: false
+      token: ""
+      repo: ""
+      auto_create_issues: false

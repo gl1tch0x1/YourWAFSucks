@@ -1,0 +1,29 @@
+{
+  "cloudflare": {
+    "headers": ["cf-ray", "cf-cache-status"],
+    "server": "cloudflare"
+  },
+  "aws-alb": {
+    "headers": ["x-amzn-trace-id"]
+  },
+  "cloudfront": {
+    "headers": ["x-amz-cf-id"]
+  },
+  "akamai": {
+    "headers": ["x-akamai-transformed"],
+    "server": "akamaighost"
+  },
+  "nginx": {
+    "server": "nginx"
+  },
+  "envoy": {
+    "headers": ["x-envoy-upstream-service-time"],
+    "server": "envoy"
+  },
+  "apache": {
+    "server": "apache"
+  },
+  "iis": {
+    "server": "iis"
+  }
+}
