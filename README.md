@@ -1,14 +1,15 @@
-# YourWAFSucks
+<p align="center">
+  <img src="assets/yfs-logo.png" alt="YourWAFSucks shield and lightning logo" width="300">
+</p>
 
-Advanced 403/401 access-control bypass testing framework for security research, web application assessment, and WAF-oriented validation.
-
-> “Because sometimes 403 just means try harder.”
+<h1 align="center">YourWAFSucks</h1>
+<p align="center"><strong>Authorized access-control assessment for web applications and WAFs</strong></p>
 
 ## Overview
 
-YourWAFSucks is a Go-based offensive security toolkit designed to identify suspicious authorization bypass patterns in web applications behind WAFs, reverse proxies, and frontend filtering layers. It works by combining request mutation, fingerprinting, calibration, adaptive throttling, and scoring to highlight responses that differ materially from a site’s normal baseline.
+YourWAFSucks is a Go-based assessment tool for identifying response differences that may indicate access-control weaknesses behind WAFs, reverse proxies, and frontend filters. It combines request variation, fingerprinting, baseline calibration, adaptive rate limiting, and scoring to highlight responses that differ from a target’s normal baseline.
 
-The project is intended for authorized security testing only. It is designed to support red-team workflows, controlled application testing, and security validation in environments where explicit approval exists.
+Use it only on systems you own or have explicit authorization to assess.
 
 ## What the project does
 
