@@ -163,6 +163,7 @@ sequenceDiagram
 
 - Go 1.22+
 - Optional Python 3 for report generation and webhook integration
+- On Windows, use Git Bash or WSL with Go, GNU make, and optional Python 3
 - Network access to the target application
 - Explicit authorization before testing any environment
 
@@ -174,6 +175,16 @@ sequenceDiagram
 git clone https://github.com/gl1tch0x1/YourWAFSucks.git
 cd YourWAFSucks
 ```
+
+### Interactive setup
+
+Run the setup script to build the engine and launch the CLI:
+
+```bash
+./setup.sh
+```
+
+With no arguments, the CLI prompts for a target URL and confirmation that you are authorized to test it. Arguments passed to `setup.sh` are forwarded to `bypass403.sh`.
 
 ### Build the binary
 
@@ -206,17 +217,25 @@ With output file:
 ### Common CLI flags
 
 ```bash
--u, --target             Target URL
--k, --techniques        Technique set or all
--j, --jobs              Worker count
--H, --header            Custom header (repeatable)
--b, --cookie            Cookie header
--x, --proxy             HTTP proxy URL
--o, --output            JSONL output path
--q, --quiet             Quiet mode
--v, --verbose           Verbose logging
---no-retest             Skip replay verification
---version               Show version
+-u, --url, --target       Target URL
+-k, --techniques          Technique set or all
+-j, --jobs                Worker count
+-H, --header              Custom header (repeatable)
+-b, --cookie              Cookie header
+-x, --proxy               HTTP proxy URL
+-o, --output              JSONL output path
+--rate-limit              Requests per second
+--timeout                 Request timeout (for example, 10s)
+--retries                 Maximum request retries
+--max-requests             Maximum HTTP attempts per target
+--max-duration             Maximum scan duration (for example, 1h)
+--allow-host               Exact allowed hostname (repeatable; does not include subdomains)
+-ms, --match-status        Display responses with selected status codes (comma-separated)
+-n, --dry-run              Print planned requests without sending them
+-q, --quiet                Quiet mode
+-v, --verbose              Verbose logging
+--no-retest                Skip replay verification
+--version                  Show version
 ```
 
 ## Configuration
@@ -246,6 +265,7 @@ techniques:
 ```
 
 Configuration values are defined in `config/default.yaml` and interpreted by the configuration loader in `internal/config/config.go`.
+The default safety limits are 10,000 HTTP attempts per target and a one-hour maximum duration. `--max-requests` and `--max-duration` can lower or raise these limits for a run. When one or more `--allow-host` values are supplied, the target and every followed redirect must match one of those hostnames exactly.
 
 ## How the tool works
 
@@ -260,6 +280,7 @@ Configuration values are defined in `config/default.yaml` and interpreted by the
 ## Reporting and output
 
 The Go engine emits structured JSONL output, and the Python helper layer can generate markdown and HTML summaries as well as webhook notifications.
+Each finding record includes the target, tool version, and UTC scan timestamp alongside response and replay details. Cookies and global custom headers are not written; URL credentials and common secret query parameters are redacted.
 
 Example JSONL record:
 

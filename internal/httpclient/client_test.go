@@ -1,0 +1,63 @@
+package httpclient
+
+import (
+	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
+	"testing"
+	"time"
+)
+
+func TestRequestEnforcesMaximumRequestBudget(t *testing.T) {
+	var received atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		received.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client := New(Config{
+		Timeout:     time.Second,
+		MaxRetries:  0,
+		MaxRequests: 2,
+	})
+
+	for range 2 {
+		if _, err := client.Request(context.Background(), Request{Method: http.MethodGet, URL: server.URL}); err != nil {
+			t.Fatalf("Request() error before budget was exhausted: %v", err)
+		}
+	}
+
+	if _, err := client.Request(context.Background(), Request{Method: http.MethodGet, URL: server.URL}); !errors.Is(err, ErrRequestLimit) {
+		t.Fatalf("Request() error = %v, want %v", err, ErrRequestLimit)
+	}
+	if got := received.Load(); got != 2 {
+		t.Fatalf("server received %d requests, want 2", got)
+	}
+	if got := client.RequestsMade(); got != 2 {
+		t.Fatalf("RequestsMade() = %d, want 2", got)
+	}
+}
+
+func TestRequestRejectsHostOutsideAllowlist(t *testing.T) {
+	var received atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		received.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client := New(Config{
+		Timeout:      time.Second,
+		MaxRetries:   0,
+		AllowedHosts: []string{"allowed.example"},
+	})
+	if _, err := client.Request(context.Background(), Request{Method: http.MethodGet, URL: server.URL}); !errors.Is(err, ErrHostNotAllowed) {
+		t.Fatalf("Request() error = %v, want %v", err, ErrHostNotAllowed)
+	}
+	if got := received.Load(); got != 0 {
+		t.Fatalf("server received %d requests, want 0", got)
+	}
+}

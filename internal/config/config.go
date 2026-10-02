@@ -11,39 +11,39 @@ import (
 
 // Config represents the complete configuration structure
 type Config struct {
-	General    GeneralConfig    `yaml:"general"`
-	Techniques TechniquesConfig `yaml:"techniques"`
-	WAF        WAFConfig        `yaml:"waf"`
-	Proxy      ProxyConfig      `yaml:"proxy"`
-	Scoring    ScoringConfig    `yaml:"scoring"`
-	Evasion    EvasionConfig    `yaml:"evasion"`
-	Reporting  ReportingConfig  `yaml:"reporting"`
-	Security   SecurityConfig   `yaml:"security"`
+	General     GeneralConfig     `yaml:"general"`
+	Techniques  TechniquesConfig  `yaml:"techniques"`
+	WAF         WAFConfig         `yaml:"waf"`
+	Proxy       ProxyConfig       `yaml:"proxy"`
+	Scoring     ScoringConfig     `yaml:"scoring"`
+	Evasion     EvasionConfig     `yaml:"evasion"`
+	Reporting   ReportingConfig   `yaml:"reporting"`
+	Security    SecurityConfig    `yaml:"security"`
 	Integration IntegrationConfig `yaml:"integration"`
 }
 
 type GeneralConfig struct {
-	Target       string        `yaml:"target"`
-	Timeout      time.Duration `yaml:"timeout"`
-	MaxRetries   int           `yaml:"max_retries"`
-	DryRun       bool          `yaml:"dry_run"`
-	Workers      int           `yaml:"workers"`
-	RateLimit    int           `yaml:"rate_limit"`
-	Burst        int           `yaml:"burst"`
-	OutputPath   string        `yaml:"output_path"`
-	Quiet        bool          `yaml:"quiet"`
-	Verbose      bool          `yaml:"verbose"`
-	LogLevel     string        `yaml:"log_level"`
-	NoRetest     bool          `yaml:"no_retest"`
-	ReplayAttempts int         `yaml:"replay_attempts"`
+	Target         string        `yaml:"target"`
+	Timeout        time.Duration `yaml:"timeout"`
+	MaxRetries     int           `yaml:"max_retries"`
+	DryRun         bool          `yaml:"dry_run"`
+	Workers        int           `yaml:"workers"`
+	RateLimit      int           `yaml:"rate_limit"`
+	Burst          int           `yaml:"burst"`
+	OutputPath     string        `yaml:"output_path"`
+	Quiet          bool          `yaml:"quiet"`
+	Verbose        bool          `yaml:"verbose"`
+	LogLevel       string        `yaml:"log_level"`
+	NoRetest       bool          `yaml:"no_retest"`
+	ReplayAttempts int           `yaml:"replay_attempts"`
 }
 
 type TechniquesConfig struct {
-	Enabled []string                 `yaml:"enabled"`
-	Headers HeadersConfig            `yaml:"headers"`
-	Verbs   VerbsConfig              `yaml:"verbs"`
-	Encoding EncodingConfig          `yaml:"encoding"`
-	Raw     RawConfig                `yaml:"raw"`
+	Enabled  []string       `yaml:"enabled"`
+	Headers  HeadersConfig  `yaml:"headers"`
+	Verbs    VerbsConfig    `yaml:"verbs"`
+	Encoding EncodingConfig `yaml:"encoding"`
+	Raw      RawConfig      `yaml:"raw"`
 }
 
 type HeadersConfig struct {
@@ -63,18 +63,18 @@ type EncodingConfig struct {
 }
 
 type RawConfig struct {
-	EnableDesync         bool `yaml:"enable_desync"`
+	EnableDesync           bool `yaml:"enable_desync"`
 	EnableDuplicateHeaders bool `yaml:"enable_duplicate_headers"`
-	EnableAbsoluteURI    bool `yaml:"enable_absolute_uri"`
+	EnableAbsoluteURI      bool `yaml:"enable_absolute_uri"`
 }
 
 type WAFConfig struct {
-	DetectionMode         string `yaml:"detection_mode"`
-	BypassMode           string `yaml:"bypass_mode"`
-	FrontendSignatures   string `yaml:"frontend_signatures"`
-	WAFSignatures        string `yaml:"waf_signatures"`
-	Cloudflare           CloudflareConfig `yaml:"cloudflare"`
-	Akamai               AkamaiConfig `yaml:"akamai"`
+	DetectionMode      string           `yaml:"detection_mode"`
+	BypassMode         string           `yaml:"bypass_mode"`
+	FrontendSignatures string           `yaml:"frontend_signatures"`
+	WAFSignatures      string           `yaml:"waf_signatures"`
+	Cloudflare         CloudflareConfig `yaml:"cloudflare"`
+	Akamai             AkamaiConfig     `yaml:"akamai"`
 }
 
 type CloudflareConfig struct {
@@ -84,45 +84,45 @@ type CloudflareConfig struct {
 }
 
 type AkamaiConfig struct {
-	EnableEdgeAuth    bool `yaml:"enable_edge_auth"`
+	EnableEdgeAuth     bool `yaml:"enable_edge_auth"`
 	EnableGhostHeaders bool `yaml:"enable_ghost_headers"`
 }
 
 type ProxyConfig struct {
-	URL      string              `yaml:"url"`
-	Rotation ProxyRotationConfig `yaml:"rotation"`
-	SupportedProtocols []string   `yaml:"supported_protocols"`
+	URL                string              `yaml:"url"`
+	Rotation           ProxyRotationConfig `yaml:"rotation"`
+	SupportedProtocols []string            `yaml:"supported_protocols"`
 }
 
 type ProxyRotationConfig struct {
-	Enabled           bool   `yaml:"enabled"`
-	ProxiesFile       string `yaml:"proxies_file"`
-	RotationStrategy  string `yaml:"rotation_strategy"`
-	HealthCheck       bool   `yaml:"health_check"`
-	Failover          bool   `yaml:"failover"`
+	Enabled          bool   `yaml:"enabled"`
+	ProxiesFile      string `yaml:"proxies_file"`
+	RotationStrategy string `yaml:"rotation_strategy"`
+	HealthCheck      bool   `yaml:"health_check"`
+	Failover         bool   `yaml:"failover"`
 }
 
 type ScoringConfig struct {
-	InterestingThreshold     int  `yaml:"interesting_threshold"`
-	HighConfidenceThreshold int  `yaml:"high_confidence_threshold"`
-	CriticalThreshold       int  `yaml:"critical_threshold"`
-	EnableMLScoring         bool `yaml:"enable_ml_scoring"`
-	EnablePatternAnalysis   bool `yaml:"enable_pattern_analysis"`
+	InterestingThreshold      int  `yaml:"interesting_threshold"`
+	HighConfidenceThreshold   int  `yaml:"high_confidence_threshold"`
+	CriticalThreshold         int  `yaml:"critical_threshold"`
+	EnableMLScoring           bool `yaml:"enable_ml_scoring"`
+	EnablePatternAnalysis     bool `yaml:"enable_pattern_analysis"`
 	EnableSimilarityDetection bool `yaml:"enable_similarity_detection"`
-	ReplayBonus             int  `yaml:"replay_bonus"`
-	ReplayPenalty           int  `yaml:"replay_penalty"`
+	ReplayBonus               int  `yaml:"replay_bonus"`
+	ReplayPenalty             int  `yaml:"replay_penalty"`
 }
 
 type EvasionConfig struct {
-	UARotation        UARotationConfig      `yaml:"ua_rotation"`
-	CookieManipulation CookieManipulationConfig `yaml:"cookie_manipulation"`
-	Timing            TimingConfig           `yaml:"timing"`
+	UARotation          UARotationConfig          `yaml:"ua_rotation"`
+	CookieManipulation  CookieManipulationConfig  `yaml:"cookie_manipulation"`
+	Timing              TimingConfig              `yaml:"timing"`
 	HeaderRandomization HeaderRandomizationConfig `yaml:"header_randomization"`
 }
 
 type UARotationConfig struct {
 	Enabled          bool   `yaml:"enabled"`
-	UAFile          string `yaml:"ua_file"`
+	UAFile           string `yaml:"ua_file"`
 	RotationStrategy string `yaml:"rotation_strategy"`
 }
 
@@ -139,48 +139,48 @@ type TimingConfig struct {
 }
 
 type HeaderRandomizationConfig struct {
-	Enabled          bool `yaml:"enabled"`
-	RandomOrder      bool `yaml:"random_order"`
-	AddNoiseHeaders  bool `yaml:"add_noise_headers"`
+	Enabled         bool `yaml:"enabled"`
+	RandomOrder     bool `yaml:"random_order"`
+	AddNoiseHeaders bool `yaml:"add_noise_headers"`
 }
 
 type ReportingConfig struct {
-	Formats              []string           `yaml:"formats"`
-	IncludeRequest       bool               `yaml:"include_request"`
-	IncludeResponse      bool               `yaml:"include_response"`
-	IncludeHeaders       bool               `yaml:"include_headers"`
-	IncludeTiming        bool               `yaml:"include_timing"`
-	IncludeScoreBreakdown bool              `yaml:"include_score_breakdown"`
-	Webhook              WebhookConfig      `yaml:"webhook"`
+	Formats               []string      `yaml:"formats"`
+	IncludeRequest        bool          `yaml:"include_request"`
+	IncludeResponse       bool          `yaml:"include_response"`
+	IncludeHeaders        bool          `yaml:"include_headers"`
+	IncludeTiming         bool          `yaml:"include_timing"`
+	IncludeScoreBreakdown bool          `yaml:"include_score_breakdown"`
+	Webhook               WebhookConfig `yaml:"webhook"`
 }
 
 type WebhookConfig struct {
-	Enabled        bool              `yaml:"enabled"`
-	URL            string            `yaml:"url"`
-	Method         string            `yaml:"method"`
-	Headers        map[string]string `yaml:"headers"`
-	OnSuccessOnly  bool              `yaml:"on_success_only"`
+	Enabled       bool              `yaml:"enabled"`
+	URL           string            `yaml:"url"`
+	Method        string            `yaml:"method"`
+	Headers       map[string]string `yaml:"headers"`
+	OnSuccessOnly bool              `yaml:"on_success_only"`
 }
 
 type SecurityConfig struct {
-	AdaptiveRateLimiting  bool          `yaml:"adaptive_rate_limiting"`
+	AdaptiveRateLimiting bool          `yaml:"adaptive_rate_limiting"`
 	BackoffOnError       bool          `yaml:"backoff_on_error"`
 	MaxErrorsBeforePause int           `yaml:"max_errors_before_pause"`
-	RandomizeTiming       bool          `yaml:"randomize_timing"`
-	RandomizeHeaders      bool          `yaml:"randomize_headers"`
-	MaxRequestsPerTarget  int           `yaml:"max_requests_per_target"`
-	MaxDuration           time.Duration `yaml:"max_duration"`
+	RandomizeTiming      bool          `yaml:"randomize_timing"`
+	RandomizeHeaders     bool          `yaml:"randomize_headers"`
+	MaxRequestsPerTarget int           `yaml:"max_requests_per_target"`
+	MaxDuration          time.Duration `yaml:"max_duration"`
 }
 
 type IntegrationConfig struct {
-	CICD     CICDConfig    `yaml:"cicd"`
+	CICD      CICDConfig      `yaml:"cicd"`
 	Platforms PlatformsConfig `yaml:"platforms"`
 }
 
 type CICDConfig struct {
-	Enabled    bool   `yaml:"enabled"`
-	Format     string `yaml:"format"`
-	OutputDir  string `yaml:"output_dir"`
+	Enabled   bool   `yaml:"enabled"`
+	Format    string `yaml:"format"`
+	OutputDir string `yaml:"output_dir"`
 }
 
 type PlatformsConfig struct {
@@ -237,17 +237,17 @@ func LoadOrDefault(path string) (*Config, error) {
 			".bypass403.yaml",
 			"config/default.yaml",
 		}
-		
+
 		for _, p := range defaultPaths {
 			if _, err := os.Stat(p); err == nil {
 				return Load(p)
 			}
 		}
-		
+
 		// Return default config
 		return DefaultConfig(), nil
 	}
-	
+
 	return Load(path)
 }
 
@@ -255,22 +255,22 @@ func LoadOrDefault(path string) (*Config, error) {
 func DefaultConfig() *Config {
 	return &Config{
 		General: GeneralConfig{
-			Timeout:       10 * time.Second,
-			MaxRetries:    2,
-			DryRun:        false,
-			Workers:       20,
-			RateLimit:     100,
-			Burst:         50,
-			Quiet:         false,
-			Verbose:       false,
-			LogLevel:      "info",
-			NoRetest:      false,
+			Timeout:        10 * time.Second,
+			MaxRetries:     2,
+			DryRun:         false,
+			Workers:        20,
+			RateLimit:      100,
+			Burst:          50,
+			Quiet:          false,
+			Verbose:        false,
+			LogLevel:       "info",
+			NoRetest:       false,
 			ReplayAttempts: 2,
 		},
 		Techniques: TechniquesConfig{
 			Enabled: []string{"headers", "verbs", "endpaths", "midpaths", "encoding", "raw", "protocol"},
 			Headers: HeadersConfig{
-				BypassIP: "127.0.0.1",
+				BypassIP:      "127.0.0.1",
 				CustomHeaders: make(map[string]string),
 			},
 			Verbs: VerbsConfig{
@@ -283,35 +283,35 @@ func DefaultConfig() *Config {
 				UnicodeNormalize: true,
 			},
 			Raw: RawConfig{
-				EnableDesync:         true,
+				EnableDesync:           true,
 				EnableDuplicateHeaders: true,
-				EnableAbsoluteURI:    true,
+				EnableAbsoluteURI:      true,
 			},
 		},
 		WAF: WAFConfig{
-			DetectionMode:       "normal",
+			DetectionMode:      "normal",
 			BypassMode:         "standard",
 			FrontendSignatures: "config/frontend_signatures.json",
 			WAFSignatures:      "config/waf_signatures.json",
 		},
 		Scoring: ScoringConfig{
-			InterestingThreshold:     40,
-			HighConfidenceThreshold: 70,
-			CriticalThreshold:       90,
-			EnableMLScoring:         false,
-			EnablePatternAnalysis:   true,
+			InterestingThreshold:      40,
+			HighConfidenceThreshold:   70,
+			CriticalThreshold:         90,
+			EnableMLScoring:           false,
+			EnablePatternAnalysis:     true,
 			EnableSimilarityDetection: true,
-			ReplayBonus:             10,
-			ReplayPenalty:           -20,
+			ReplayBonus:               10,
+			ReplayPenalty:             -20,
 		},
 		Security: SecurityConfig{
-			AdaptiveRateLimiting:  true,
+			AdaptiveRateLimiting: true,
 			BackoffOnError:       true,
 			MaxErrorsBeforePause: 10,
-			RandomizeTiming:       true,
-			RandomizeHeaders:      true,
-			MaxRequestsPerTarget:  10000,
-			MaxDuration:           time.Hour,
+			RandomizeTiming:      true,
+			RandomizeHeaders:     true,
+			MaxRequestsPerTarget: 10000,
+			MaxDuration:          time.Hour,
 		},
 	}
 }
@@ -325,6 +325,12 @@ func setDefaults(cfg *Config) {
 	}
 	if cfg.General.RateLimit == 0 {
 		cfg.General.RateLimit = 100
+	}
+	if cfg.Security.MaxRequestsPerTarget <= 0 {
+		cfg.Security.MaxRequestsPerTarget = 10000
+	}
+	if cfg.Security.MaxDuration <= 0 {
+		cfg.Security.MaxDuration = time.Hour
 	}
 	if cfg.General.LogLevel == "" {
 		cfg.General.LogLevel = "info"

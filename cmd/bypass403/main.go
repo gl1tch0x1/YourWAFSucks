@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -42,18 +43,42 @@ func main() {
 		dryRun         = flag.Bool("n", false, "Dry run")
 		noRetest       = flag.Bool("no-retest", false, "Skip replay verification")
 		maxRetries     = flag.Int("retries", 2, "Max retries")
+		maxRequests    = flag.Int("max-requests", 0, "Maximum HTTP request attempts for this target")
+		maxDuration    = flag.Duration("max-duration", 0, "Maximum scan duration")
+		matchStatus    = flag.String("ms", "", "Display matching HTTP status codes (comma-separated)")
 		showVer        = flag.Bool("version", false, "Show version")
 	)
+	flag.StringVar(target, "target", *target, "Target URL")
+	flag.StringVar(target, "url", *target, "Target URL")
+	flag.StringVar(techniquesFlag, "techniques", *techniquesFlag, "Comma-separated techniques")
+	flag.StringVar(proxyURL, "proxy", *proxyURL, "Proxy URL")
+	flag.StringVar(cookie, "cookie", *cookie, "Cookie")
+	flag.StringVar(userAgent, "user-agent", *userAgent, "User-Agent")
+	flag.IntVar(jobs, "jobs", *jobs, "Parallel jobs")
+	flag.IntVar(rateLimit, "rate-limit", *rateLimit, "Rate limit (requests per second)")
+	flag.StringVar(outputPath, "output", *outputPath, "Output JSONL path")
+	flag.BoolVar(verbose, "verbose", *verbose, "Verbose")
+	flag.BoolVar(quiet, "quiet", *quiet, "Quiet")
+	flag.BoolVar(dryRun, "dry-run", *dryRun, "Dry run")
+	flag.StringVar(matchStatus, "match-status", *matchStatus, "Display matching HTTP status codes (comma-separated)")
 
 	// Custom header flags (repeatable)
 	var headers headerFlag
 	flag.Var(&headers, "H", "Custom header (repeatable)")
+	flag.Var(&headers, "header", "Custom header (repeatable)")
+	var allowedHosts stringListFlag
+	flag.Var(&allowedHosts, "allow-host", "Allowed request hostname (repeatable, exact match)")
 
 	flag.Parse()
 
 	if *showVer {
 		fmt.Println(Version)
 		os.Exit(0)
+	}
+	matchStatusCodes, err := parseStatusCodes(*matchStatus)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[!] Invalid status filter: %v\n", err)
+		os.Exit(3)
 	}
 	if *target == "" {
 		fmt.Fprintln(os.Stderr, "[!] Target URL required (-u)")
@@ -66,6 +91,10 @@ func main() {
 		os.Exit(3)
 	}
 	*target = targetURL
+	if len(allowedHosts) > 0 && !hostnameAllowed(targetURL, allowedHosts) {
+		fmt.Fprintf(os.Stderr, "[!] Target host is not in the allowlist\n")
+		os.Exit(3)
+	}
 
 	// Load configuration
 	cfg, err := config.LoadOrDefault(*configFile)
@@ -102,8 +131,14 @@ func main() {
 	if *maxRetries != 2 {
 		cfg.General.MaxRetries = *maxRetries
 	}
+	if *maxRequests > 0 {
+		cfg.Security.MaxRequestsPerTarget = *maxRequests
+	}
+	if *maxDuration > 0 {
+		cfg.Security.MaxDuration = *maxDuration
+	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.Security.MaxDuration)
 	defer cancel()
 
 	// Signal handling
@@ -118,18 +153,21 @@ func main() {
 	logger := output.NewLogger(os.Stderr, cfg.General.Quiet, cfg.General.Verbose)
 
 	logger.Banner(Version, *target)
+	logger.Info("Safety limits: %d HTTP attempts, %s maximum duration", cfg.Security.MaxRequestsPerTarget, cfg.Security.MaxDuration)
 
 	// Initialize rate limiter
 	limiter := rate.New(cfg.General.RateLimit, cfg.General.Burst, cfg.Security.AdaptiveRateLimiting)
 
 	// --- HTTP client ---
 	clientCfg := httpclient.Config{
-		Timeout:    cfg.General.Timeout,
-		Proxy:      *proxyURL,
-		Cookie:     *cookie,
-		UserAgent:  *userAgent,
-		Headers:    headers.Map(),
-		MaxRetries: cfg.General.MaxRetries,
+		Timeout:      cfg.General.Timeout,
+		Proxy:        *proxyURL,
+		Cookie:       *cookie,
+		UserAgent:    *userAgent,
+		Headers:      headers.Map(),
+		MaxRetries:   cfg.General.MaxRetries,
+		MaxRequests:  cfg.Security.MaxRequestsPerTarget,
+		AllowedHosts: allowedHosts,
 	}
 	client := httpclient.New(clientCfg)
 
@@ -189,6 +227,7 @@ func main() {
 		all = append(all, payloads...)
 	}
 	logger.Info("Generated %d test cases", len(all))
+	logger.Info("Plan: %d payloads; maximum %d HTTP attempts over %s", len(all), cfg.Security.MaxRequestsPerTarget, cfg.Security.MaxDuration)
 
 	if cfg.General.DryRun || *dryRun {
 		for _, p := range all {
@@ -206,6 +245,11 @@ func main() {
 
 	go func() {
 		for _, p := range all {
+			if client.RequestsMade() >= int64(cfg.Security.MaxRequestsPerTarget) {
+				logger.Warn("Request budget reached; remaining payloads skipped")
+				break
+			}
+
 			select {
 			case <-ctx.Done():
 				return
@@ -238,6 +282,9 @@ func main() {
 					return
 				}
 				limiter.RecordSuccess()
+				if _, match := matchStatusCodes[resp.Status]; match {
+					logger.StatusLine(resp.Status, p.Method, p.Description)
+				}
 				sc := score.Compute(resp, cal)
 				if sc.Interesting {
 					results <- techniques.Result{Payload: p, Response: resp, Score: sc}
@@ -261,6 +308,9 @@ func main() {
 		logger.Info("Re-verifying findings...")
 		findings = replay.Verify(ctx, client, findings)
 	}
+	if ctx.Err() == context.DeadlineExceeded {
+		logger.Warn("Maximum scan duration reached; remaining requests stopped")
+	}
 
 	// --- Summary ---
 	logger.Summary(findings, cal, fp)
@@ -271,7 +321,7 @@ func main() {
 		outPath = cfg.General.OutputPath
 	}
 	if outPath != "" {
-		if err := output.WriteJSONL(outPath, findings, *target); err != nil {
+		if err := output.WriteJSONL(outPath, findings, *target, Version); err != nil {
 			logger.Err("Write failed: %v", err)
 			os.Exit(2)
 		}
@@ -303,6 +353,43 @@ func (h headerFlag) Map() map[string]string {
 		}
 	}
 	return m
+}
+
+type stringListFlag []string
+
+func (s *stringListFlag) String() string { return strings.Join(*s, ",") }
+func (s *stringListFlag) Set(v string) error {
+	*s = append(*s, v)
+	return nil
+}
+
+func hostnameAllowed(target string, allowedHosts []string) bool {
+	u, err := url.Parse(target)
+	if err != nil {
+		return false
+	}
+	host := strings.TrimSuffix(strings.ToLower(u.Hostname()), ".")
+	for _, allowed := range allowedHosts {
+		if host == strings.TrimSuffix(strings.ToLower(strings.TrimSpace(allowed)), ".") {
+			return true
+		}
+	}
+	return false
+}
+
+func parseStatusCodes(raw string) (map[int]struct{}, error) {
+	codes := make(map[int]struct{})
+	if strings.TrimSpace(raw) == "" {
+		return codes, nil
+	}
+	for _, value := range strings.Split(raw, ",") {
+		code, err := strconv.Atoi(strings.TrimSpace(value))
+		if err != nil || code < 100 || code > 599 {
+			return nil, fmt.Errorf("status codes must be integers from 100 to 599: %q", value)
+		}
+		codes[code] = struct{}{}
+	}
+	return codes, nil
 }
 
 func normalizeTarget(target string) (string, error) {

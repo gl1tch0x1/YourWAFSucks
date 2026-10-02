@@ -14,16 +14,28 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -t 2 && -z "${NO_COLOR:-}" && "${TERM:-dumb}" != "dumb" ]]; then
     RED=$'\033[1;31m'
     CYAN=$'\033[1;36m'
+    GREEN=$'\033[1;32m'
     YELLOW=$'\033[1;33m'
     DIM=$'\033[2m'
     RESET=$'\033[0m'
 else
     RED=""
     CYAN=""
+    GREEN=""
     YELLOW=""
     DIM=""
     RESET=""
 fi
+
+printf '\n%s' "$CYAN" >&2
+cat >&2 <<'BANNER'
+▄· ▄▌      ▄• ▄▌▄▄▄  ▄▄▌ ▐ ▄▌ ▄▄▄· ·▄▄▄.▄▄ · ▄• ▄▌ ▄▄· ▄ •▄ .▄▄ ·
+▐█▪██▌▪     █▪██▌▀▄ █·██· █▌▐█▐█ ▀█ ▐▄▄·▐█ ▀. █▪██▌▐█ ▌▪█▌▄▌▪▐█ ▀.
+▐█▌▐█▪ ▄█▀▄ █▌▐█▌▐▀▀▄ ██▪▐█▐▐▌▄█▀▀█ ██▪ ▄▀▀▀█▄█▌▐█▌██ ▄▄▐▀▀▄·▄▀▀▀█▄
+ ▐█▀·.▐█▌.▐▌▐█▄█▌▐█•█▌▐█▌██▐█▌▐█ ▪▐▌██▌.▐█▄▪▐█▐█▄█▌▐███▌▐█.█▌▐█▄▪▐█
+    ▀ •  ▀█▄▀▪ ▀▀▀ .▀  ▀ ▀▀▀▀ ▀▪ ▀  ▀ ▀▀▀  ▀▀▀▀  ▀▀▀ ·▀▀▀ ·▀  ▀ ▀▀▀▀
+BANNER
+printf '%s\n\n' "$RESET" >&2
 
 QUIET=0
 step() {
@@ -33,6 +45,21 @@ step() {
 }
 warn() { printf '  %s!%s %s\n' "$YELLOW" "$RESET" "$1" >&2; }
 fail() { printf '  %sX%s %s\n' "$RED" "$RESET" "$1" >&2; }
+
+if [[ $# -eq 0 && -t 0 ]]; then
+    printf '  %sINTERACTIVE SCAN%s\n' "$CYAN" "$RESET" >&2
+    printf '  %sOnly test systems you own or are explicitly authorized to assess.%s\n\n' "$DIM" "$RESET" >&2
+    read -r -p '  Target URL: ' INTERACTIVE_TARGET
+    if [[ -z "$INTERACTIVE_TARGET" ]]; then
+        fail "A target URL is required"
+        exit 3
+    fi
+    read -r -p '  Confirm authorization to test this target [y/N]: ' AUTHORIZED
+    case "$AUTHORIZED" in
+        y|Y|yes|YES|Yes) set -- -u "$INTERACTIVE_TARGET" ;;
+        *) warn "Authorization not confirmed; exiting without sending requests"; exit 0 ;;
+    esac
+fi
 
 # --- Locate Go binary ---
 GO_BIN=""
@@ -55,10 +82,16 @@ fi
 
 # --- Locate Python (optional) ---
 PY=""
-if [ -x "$SCRIPT_DIR/.venv/bin/python3" ]; then
+if [ -x "$SCRIPT_DIR/.venv/Scripts/python.exe" ]; then
+    PY="$SCRIPT_DIR/.venv/Scripts/python.exe"
+elif [ -x "$SCRIPT_DIR/.venv/bin/python3" ]; then
     PY="$SCRIPT_DIR/.venv/bin/python3"
+elif [ -x "$SCRIPT_DIR/.venv/bin/python" ]; then
+    PY="$SCRIPT_DIR/.venv/bin/python"
 elif command -v python3 >/dev/null 2>&1; then
     PY="$(command -v python3)"
+elif command -v python >/dev/null 2>&1; then
+    PY="$(command -v python)"
 fi
 
 # --- Decide execution path ---

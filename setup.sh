@@ -25,12 +25,20 @@ step() { printf '  %s>%s %s\n' "$CYAN" "$RESET" "$1"; }
 ok() { printf '  %s+%s %s\n' "$GREEN" "$RESET" "$1"; }
 warn() { printf '  %s!%s %s\n' "$YELLOW" "$RESET" "$1"; }
 
-printf '\n  %sBYPASS%s%s403%s  %s// OFFENSIVE HTTP TESTING%s\n' "$RED" "$RESET" "$CYAN" "$RESET" "$DIM" "$RESET"
-printf '  %sACCESS-CONTROL ASSESSMENT / BUILD SYSTEM%s\n\n' "$DIM" "$RESET"
+printf '\n%s' "$CYAN"
+cat <<'BANNER'
+▄· ▄▌      ▄• ▄▌▄▄▄  ▄▄▌ ▐ ▄▌ ▄▄▄· ·▄▄▄.▄▄ · ▄• ▄▌ ▄▄· ▄ •▄ .▄▄ ·
+▐█▪██▌▪     █▪██▌▀▄ █·██· █▌▐█▐█ ▀█ ▐▄▄·▐█ ▀. █▪██▌▐█ ▌▪█▌▄▌▪▐█ ▀.
+▐█▌▐█▪ ▄█▀▄ █▌▐█▌▐▀▀▄ ██▪▐█▐▐▌▄█▀▀█ ██▪ ▄▀▀▀█▄█▌▐█▌██ ▄▄▐▀▀▄·▄▀▀▀█▄
+ ▐█▀·.▐█▌.▐▌▐█▄█▌▐█•█▌▐█▌██▐█▌▐█ ▪▐▌██▌.▐█▄▪▐█▐█▄█▌▐███▌▐█.█▌▐█▄▪▐█
+    ▀ •  ▀█▄▀▪ ▀▀▀ .▀  ▀ ▀▀▀▀ ▀▪ ▀  ▀ ▀▀▀  ▀▀▀▀  ▀▀▀ ·▀▀▀ ·▀  ▀ ▀▀▀▀
+BANNER
+printf '%s\n\n' "$RESET"
+printf '  %sSETUP%s  %s/ BUILDING YOUR TESTING WORKSTATION%s\n\n' "$GREEN" "$RESET" "$DIM" "$RESET"
 
 # --- Check Go ---
 if ! command -v go >/dev/null 2>&1; then
-    warn "Go 1.21+ required. Install from https://go.dev/dl/"
+    warn "Go 1.22+ required. Install from https://go.dev/dl/"
     exit 1
 fi
 
@@ -43,23 +51,34 @@ make build
 ok "Go engine ready: bin/bypass403-go"
 
 # --- Python (optional) ---
+PYTHON_CMD=""
 if command -v python3 >/dev/null 2>&1; then
+    PYTHON_CMD="$(command -v python3)"
+elif command -v python >/dev/null 2>&1; then
+    PYTHON_CMD="$(command -v python)"
+fi
+
+if [[ -n "$PYTHON_CMD" ]]; then
     step "Python 3 detected; preparing report layer"
     if [ ! -d .venv ]; then
-        python3 -m venv .venv
+        "$PYTHON_CMD" -m venv .venv
     fi
-    # shellcheck disable=SC1091
-    source .venv/bin/activate
-    pip install --quiet --upgrade pip
-    pip install --quiet -r python/requirements.txt
+    if [[ -x .venv/Scripts/python.exe ]]; then
+        VENV_PYTHON=".venv/Scripts/python.exe"
+    elif [[ -x .venv/bin/python3 ]]; then
+        VENV_PYTHON=".venv/bin/python3"
+    else
+        VENV_PYTHON=".venv/bin/python"
+    fi
+    "$VENV_PYTHON" -m pip install --quiet --upgrade pip
+    "$VENV_PYTHON" -m pip install --quiet -r python/requirements.txt
     ok "Report layer ready"
 else
     warn "Python 3 not found; report/webhook features disabled"
 fi
 
-printf '\n  %sSETUP COMPLETE%s\n' "$GREEN" "$RESET"
-printf '  %s────────────────────────────────────────%s\n' "$DIM" "$RESET"
-printf '  %sQUICK START%s\n' "$CYAN" "$RESET"
-printf '  ./bypass403.sh -u https://target.tld/admin\n'
-printf '  ./bypass403.sh -u https://target.tld/admin --md report.md --html report.html\n\n'
-echo
+printf '\n  %sSETUP COMPLETE%s  %s/ Launching YourWAFSucks...%s\n' "$GREEN" "$RESET" "$DIM" "$RESET"
+if [[ -t 1 ]]; then
+    printf '\033[2J\033[H'
+fi
+exec "$SCRIPT_DIR/bypass403.sh" "$@"

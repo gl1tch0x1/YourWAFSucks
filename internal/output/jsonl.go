@@ -4,13 +4,19 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/gl1tch0x1/YourWAFSucks/internal/techniques"
 )
 
 type Record struct {
+	Target      string            `json:"target"`
+	ToolVersion string            `json:"tool_version"`
+	ScannedAt   time.Time         `json:"scanned_at"`
 	Technique   string            `json:"technique"`
 	Method      string            `json:"method"`
 	URL         string            `json:"url"`
@@ -25,7 +31,7 @@ type Record struct {
 	ReplayCount int               `json:"replay_count"`
 }
 
-func WriteJSONL(path string, findings []techniques.Result, target string) error {
+func WriteJSONL(path string, findings []techniques.Result, target, version string) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return err
@@ -36,11 +42,15 @@ func WriteJSONL(path string, findings []techniques.Result, target string) error 
 	defer w.Flush()
 
 	enc := json.NewEncoder(w)
+	scannedAt := time.Now().UTC()
 	for _, f := range findings {
 		rec := Record{
+			Target:      sanitizeURL(target),
+			ToolVersion: version,
+			ScannedAt:   scannedAt,
 			Technique:   f.Payload.Technique,
 			Method:      f.Payload.Method,
-			URL:         f.Payload.URL,
+			URL:         sanitizeURL(f.Payload.URL),
 			Description: f.Payload.Description,
 			Headers:     f.Payload.Headers,
 		}
@@ -48,7 +58,7 @@ func WriteJSONL(path string, findings []techniques.Result, target string) error 
 			rec.Status = f.Response.Status
 			rec.Size = len(f.Response.Body)
 			rec.Time = f.Response.Time.Seconds()
-			rec.Redirect = f.Response.Redirect
+			rec.Redirect = sanitizeURL(f.Response.Redirect)
 		}
 		rec.Reason = f.Score.Reason
 		rec.Score = f.Score.Score
@@ -58,6 +68,24 @@ func WriteJSONL(path string, findings []techniques.Result, target string) error 
 		}
 	}
 	return nil
+}
+
+func sanitizeURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	u.User = nil
+	query := u.Query()
+	for key := range query {
+		normalized := strings.ToLower(strings.ReplaceAll(key, "-", "_"))
+		switch normalized {
+		case "token", "access_token", "refresh_token", "api_key", "apikey", "secret", "password", "passwd", "authorization", "session", "cookie":
+			query[key] = []string{"[REDACTED]"}
+		}
+	}
+	u.RawQuery = query.Encode()
+	return u.String()
 }
 
 // Simple logger for stderr
@@ -133,8 +161,7 @@ func (l *Logger) Banner(version, target string) {
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	fmt.Fprintf(l.w, "\n  %s%s  %s\n", l.paint("1;31", "BYPASS"), l.paint("1;36", "403"), l.paint("2;37", "// OFFENSIVE HTTP TESTING"))
-	fmt.Fprintf(l.w, "  %s\n", l.paint("2;37", "ACCESS-CONTROL ASSESSMENT"))
+	fmt.Fprintf(l.w, "\n  %s\n", l.paint("1;36", "SCAN DETAILS"))
 	fmt.Fprintf(l.w, "  %s %s\n", l.paint("1;36", "VERSION"), version)
 	fmt.Fprintf(l.w, "  %s %s\n\n", l.paint("1;36", "TARGET "), l.paint("1;37", target))
 	l.w.Flush()
@@ -151,6 +178,13 @@ func (l *Logger) FindingLine(color string, r techniques.Result) {
 		}
 	}
 	fmt.Fprintf(l.w, "%s %s %s\n", l.paint("1;32", "[HIT]"), status, r.Payload.Description)
+	l.w.Flush()
+}
+
+func (l *Logger) StatusLine(status int, method, description string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	fmt.Fprintf(l.w, "%s %s %s\n", l.paint("1;33", fmt.Sprintf("[STATUS %d]", status)), method, description)
 	l.w.Flush()
 }
 

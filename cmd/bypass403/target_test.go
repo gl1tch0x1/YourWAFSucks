@@ -1,6 +1,11 @@
 package main
 
-import "testing"
+import (
+	"testing"
+	"time"
+
+	"github.com/gl1tch0x1/YourWAFSucks/internal/config"
+)
 
 func TestNormalizeTarget(t *testing.T) {
 	tests := []struct {
@@ -32,5 +37,42 @@ func TestNormalizeTargetRejectsInvalidURL(t *testing.T) {
 		if got, err := normalizeTarget(input); err == nil {
 			t.Errorf("normalizeTarget(%q) = %q, want an error", input, got)
 		}
+	}
+}
+
+func TestHostnameAllowedRequiresExactMatch(t *testing.T) {
+	if !hostnameAllowed("https://app.example.test/path", []string{"app.example.test"}) {
+		t.Fatal("expected exact hostname to be allowed")
+	}
+	if hostnameAllowed("https://sub.app.example.test/path", []string{"app.example.test"}) {
+		t.Fatal("unexpectedly allowed a subdomain")
+	}
+}
+
+func TestDefaultYAMLLoadsSafetyLimits(t *testing.T) {
+	cfg, err := config.Load("../../config/default.yaml")
+	if err != nil {
+		t.Fatalf("config.Load() error: %v", err)
+	}
+	if cfg.Security.MaxRequestsPerTarget != 10000 {
+		t.Errorf("MaxRequestsPerTarget = %d, want 10000", cfg.Security.MaxRequestsPerTarget)
+	}
+	if cfg.Security.MaxDuration != time.Hour {
+		t.Errorf("MaxDuration = %s, want 1h", cfg.Security.MaxDuration)
+	}
+}
+
+func TestParseStatusCodes(t *testing.T) {
+	codes, err := parseStatusCodes("200, 403,404")
+	if err != nil {
+		t.Fatalf("parseStatusCodes() error: %v", err)
+	}
+	for _, code := range []int{200, 403, 404} {
+		if _, ok := codes[code]; !ok {
+			t.Errorf("status %d missing from parsed filter", code)
+		}
+	}
+	if _, err := parseStatusCodes("200,700"); err == nil {
+		t.Fatal("expected invalid status code to fail")
 	}
 }
