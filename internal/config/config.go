@@ -268,7 +268,7 @@ func DefaultConfig() *Config {
 			ReplayAttempts: 2,
 		},
 		Techniques: TechniquesConfig{
-			Enabled: []string{"headers", "verbs", "endpaths", "midpaths", "encoding", "raw", "protocol"},
+			Enabled: []string{"headers", "verbs", "endpaths", "midpaths", "encoding"},
 			Headers: HeadersConfig{
 				BypassIP:      "127.0.0.1",
 				CustomHeaders: make(map[string]string),
@@ -326,10 +326,13 @@ func setDefaults(cfg *Config) {
 	if cfg.General.RateLimit == 0 {
 		cfg.General.RateLimit = 100
 	}
-	if cfg.Security.MaxRequestsPerTarget <= 0 {
+	if cfg.General.Burst == 0 {
+		cfg.General.Burst = min(cfg.General.RateLimit, 50)
+	}
+	if cfg.Security.MaxRequestsPerTarget == 0 {
 		cfg.Security.MaxRequestsPerTarget = 10000
 	}
-	if cfg.Security.MaxDuration <= 0 {
+	if cfg.Security.MaxDuration == 0 {
 		cfg.Security.MaxDuration = time.Hour
 	}
 	if cfg.General.LogLevel == "" {
@@ -341,6 +344,38 @@ func setDefaults(cfg *Config) {
 	if cfg.WAF.BypassMode == "" {
 		cfg.WAF.BypassMode = "standard"
 	}
+}
+
+func (cfg *Config) Validate() error {
+	if cfg.General.Timeout <= 0 {
+		return fmt.Errorf("general.timeout must be positive")
+	}
+	if cfg.General.Workers < 1 || cfg.General.Workers > 1024 {
+		return fmt.Errorf("general.workers must be between 1 and 1024")
+	}
+	if cfg.General.RateLimit < 1 {
+		return fmt.Errorf("general.rate_limit must be positive")
+	}
+	if cfg.General.Burst < 1 || cfg.General.Burst > 10000 {
+		return fmt.Errorf("general.burst must be between 1 and 10000")
+	}
+	if cfg.General.MaxRetries < 0 || cfg.General.MaxRetries > 10 {
+		return fmt.Errorf("general.max_retries must be between 0 and 10")
+	}
+	if cfg.Security.MaxRequestsPerTarget < 1 {
+		return fmt.Errorf("security.max_requests_per_target must be positive")
+	}
+	if cfg.Security.MaxDuration <= 0 {
+		return fmt.Errorf("security.max_duration must be positive")
+	}
+	return nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // Save saves configuration to a YAML file

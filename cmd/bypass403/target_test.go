@@ -60,6 +60,51 @@ func TestDefaultYAMLLoadsSafetyLimits(t *testing.T) {
 	if cfg.Security.MaxDuration != time.Hour {
 		t.Errorf("MaxDuration = %s, want 1h", cfg.Security.MaxDuration)
 	}
+	for _, technique := range cfg.Techniques.Enabled {
+		if technique == "raw" || technique == "protocol" {
+			t.Errorf("unsupported technique %q should not be enabled by default", technique)
+		}
+	}
+	for _, technique := range cfg.Techniques.Enabled {
+		if technique == "raw" || technique == "protocol" {
+			t.Errorf("unsupported technique %q should not be enabled by default", technique)
+		}
+	}
+}
+
+func TestParseTechniquesRejectsUnknownAndDeduplicates(t *testing.T) {
+	available := []string{"headers", "verbs"}
+	selected, err := parseTechniques("headers, headers,verbs", available)
+	if err != nil {
+		t.Fatalf("parseTechniques() error: %v", err)
+	}
+	if len(selected) != 2 || selected[0] != "headers" || selected[1] != "verbs" {
+		t.Fatalf("selected techniques = %v, want [headers verbs]", selected)
+	}
+	if _, err := parseTechniques("headers,unknown", available); err == nil {
+		t.Fatal("parseTechniques() accepted an unknown technique")
+	}
+}
+
+func TestConfigValidateRejectsUnsafeRuntimeLimits(t *testing.T) {
+	tests := []struct {
+		name   string
+		change func(*config.Config)
+	}{
+		{"workers", func(cfg *config.Config) { cfg.General.Workers = -1 }},
+		{"retries", func(cfg *config.Config) { cfg.General.MaxRetries = -1 }},
+		{"timeout", func(cfg *config.Config) { cfg.General.Timeout = 0 }},
+		{"request budget", func(cfg *config.Config) { cfg.Security.MaxRequestsPerTarget = -1 }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cfg := config.DefaultConfig()
+			test.change(cfg)
+			if err := cfg.Validate(); err == nil {
+				t.Fatal("Validate() accepted an invalid runtime limit")
+			}
+		})
+	}
 }
 
 func TestParseStatusCodes(t *testing.T) {

@@ -32,12 +32,9 @@ techniques:
     - endpaths
     - midpaths
     - encoding
-    - raw
-    - protocol
     - advanced
     - smt
     - unicode
-    - case_manipulation
 
   # Technique-specific settings
   headers:

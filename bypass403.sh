@@ -27,17 +27,25 @@ else
     RESET=""
 fi
 
-printf '\n%s' "$CYAN" >&2
-cat >&2 <<'BANNER'
+QUIET=0
+for arg in "$@"; do
+    case "$arg" in
+        -q|--quiet) QUIET=1 ;;
+    esac
+done
+
+if [[ "$QUIET" -eq 0 ]]; then
+    printf '\n%s' "$CYAN" >&2
+    cat >&2 <<'BANNER'
 ▄· ▄▌      ▄• ▄▌▄▄▄  ▄▄▌ ▐ ▄▌ ▄▄▄· ·▄▄▄.▄▄ · ▄• ▄▌ ▄▄· ▄ •▄ .▄▄ ·
 ▐█▪██▌▪     █▪██▌▀▄ █·██· █▌▐█▐█ ▀█ ▐▄▄·▐█ ▀. █▪██▌▐█ ▌▪█▌▄▌▪▐█ ▀.
 ▐█▌▐█▪ ▄█▀▄ █▌▐█▌▐▀▀▄ ██▪▐█▐▐▌▄█▀▀█ ██▪ ▄▀▀▀█▄█▌▐█▌██ ▄▄▐▀▀▄·▄▀▀▀█▄
  ▐█▀·.▐█▌.▐▌▐█▄█▌▐█•█▌▐█▌██▐█▌▐█ ▪▐▌██▌.▐█▄▪▐█▐█▄█▌▐███▌▐█.█▌▐█▄▪▐█
     ▀ •  ▀█▄▀▪ ▀▀▀ .▀  ▀ ▀▀▀▀ ▀▪ ▀  ▀ ▀▀▀  ▀▀▀▀  ▀▀▀ ·▀▀▀ ·▀  ▀ ▀▀▀▀
 BANNER
-printf '%s\n\n' "$RESET" >&2
+    printf '%s\n\n' "$RESET" >&2
+fi
 
-QUIET=0
 step() {
     if [[ "$QUIET" -eq 0 ]]; then
         printf '  %s>%s %s\n' "$CYAN" "$RESET" "$1" >&2
@@ -95,13 +103,12 @@ elif command -v python >/dev/null 2>&1; then
 fi
 
 # --- Decide execution path ---
-# If --report/--webhook flags are used, delegate to Python (which spawns Go).
+# If report flags are used, delegate to Python (which spawns Go).
 # Otherwise, run Go directly (fastest path).
 NEEDS_PYTHON=0
 for arg in "$@"; do
     case "$arg" in
-        --md|--html|--webhook|--report|--python) NEEDS_PYTHON=1 ;;
-        -q) QUIET=1 ;;
+        --md|--md=*|--html|--html=*|--webhook|--webhook=*|--jsonl|--jsonl=*) NEEDS_PYTHON=1 ;;
     esac
 done
 

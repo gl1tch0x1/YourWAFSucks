@@ -43,11 +43,13 @@ The project includes multiple payload classes, each mapped to a technique regist
 - `endpaths` – suffix- and path-based evasion tricks
 - `midpaths` – prefix and mid-path traversal variants
 - `encoding` – double encoding, mixed case, and normalization variants
-- `raw` – desync, duplicate headers, and raw HTTP edge cases
-- `protocol` – protocol negotiation and HTTP version edge conditions
+- `raw` – raw HTTP builders are present but are not dispatched by the current CLI
+- `protocol` – the current transport does not implement the advertised HTTP-version variants
 - `advanced` – host manipulation, cache-control bypasses, and deeper request variants
 - `smt` – state-machine and session-state mutation patterns
 - `unicode` – Unicode normalization and homograph-style edge cases
+
+The CLI skips `raw` and `protocol` when selected because its current HTTP transport does not execute those payload types.
 
 ## Architecture
 
@@ -186,6 +188,16 @@ Run the setup script to build the engine and launch the CLI:
 
 With no arguments, the CLI prompts for a target URL and confirmation that you are authorized to test it. Arguments passed to `setup.sh` are forwarded to `bypass403.sh`.
 
+### Update an existing checkout
+
+From a clean `main` checkout, run:
+
+```bash
+./update.sh
+```
+
+The updater fetches `origin/main`, builds that revision in a temporary directory, then fast-forwards the checkout and installs the verified Go binary. It refuses to overwrite tracked local changes or diverged history. Use `./update.sh --check` to see whether an update is available without applying it. On Windows, run it from Git Bash or WSL with Git and Go installed; GNU Make is not required by the updater.
+
 ### Build the binary
 
 ```bash
@@ -257,8 +269,6 @@ techniques:
     - endpaths
     - midpaths
     - encoding
-    - raw
-    - protocol
     - advanced
     - smt
     - unicode

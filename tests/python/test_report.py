@@ -1,10 +1,12 @@
 import sys
+import shlex
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "python"))
 
-from bypass403_cli import parse_args
-from report.markdown import write_markdown
+from bypass403_cli import parse_args, sanitize_url
+from report.markdown import _repro_curl, write_markdown
+from webhook.notify import send_webhook
 
 
 def test_write_markdown(tmp_path):
@@ -74,3 +76,26 @@ def test_report_cli_accepts_documented_scan_options(monkeypatch):
     assert args.max_duration == "2m"
     assert args.allow_host == ["example.test"]
     assert args.match_status == "200,403"
+
+
+def test_reproduction_command_quotes_values_without_disabling_tls():
+    command = _repro_curl({
+        "method": "GET",
+        "url": "https://example.test/admin?a=1&b=two words",
+        "headers": {"X-Test": "value with ' quotes"},
+    })
+    parts = shlex.split(command)
+
+    assert "-k" not in parts
+    assert parts[parts.index("-H") + 1] == "X-Test: value with ' quotes"
+    assert parts[-1] == "https://example.test/admin?a=1&b=two words"
+
+
+def test_report_target_redacts_userinfo_and_secret_query_values():
+    assert sanitize_url(
+        "https://user:pass@example.test/admin?access-token=secret&view=full#fragment"
+    ) == "https://example.test/admin?access-token=%5BREDACTED%5D&view=full"
+
+
+def test_webhook_rejects_non_http_urls():
+    assert send_webhook("file:///tmp/report", "https://example.test", []) is False

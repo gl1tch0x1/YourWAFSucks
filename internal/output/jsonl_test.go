@@ -18,6 +18,10 @@ func TestWriteJSONLIncludesScanMetadata(t *testing.T) {
 			Method:      "GET",
 			URL:         "https://user:pass@example.test/admin?access_token=payload-secret&view=full",
 			Description: "header mutation",
+			Headers: map[string]string{
+				"Authorization":   "Bearer sensitive-token",
+				"X-Forwarded-For": "127.0.0.1",
+			},
 		},
 	}}
 
@@ -38,6 +42,12 @@ func TestWriteJSONLIncludesScanMetadata(t *testing.T) {
 	}
 	if record.URL != "https://example.test/admin?access_token=%5BREDACTED%5D&view=full" {
 		t.Errorf("URL = %q, want sanitized finding URL", record.URL)
+	}
+	if record.Headers["Authorization"] != "[REDACTED]" {
+		t.Errorf("Authorization header = %q, want redacted", record.Headers["Authorization"])
+	}
+	if record.Headers["X-Forwarded-For"] != "127.0.0.1" {
+		t.Errorf("non-sensitive header = %q, want original value", record.Headers["X-Forwarded-For"])
 	}
 	if record.ToolVersion != "1.2.3" {
 		t.Errorf("ToolVersion = %q, want 1.2.3", record.ToolVersion)

@@ -1,8 +1,15 @@
 import json
+import sys
 import urllib.request
+from urllib.parse import urlsplit
 
 
 def send_webhook(url: str, target: str, findings: list[dict]):
+    parsed = urlsplit(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        print("[!] Webhook URL must use HTTP or HTTPS", file=sys.stderr)
+        return False
+
     high = [f for f in findings if f.get("score", 0) >= 60]
 
     text = (
@@ -20,6 +27,8 @@ def send_webhook(url: str, target: str, findings: list[dict]):
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            resp.read()
+            resp.read(64 * 1024)
+        return True
     except Exception as e:
-        print(f"[!] Webhook failed: {e}", file=__import__("sys").stderr)
+        print(f"[!] Webhook failed ({type(e).__name__})", file=sys.stderr)
+        return False

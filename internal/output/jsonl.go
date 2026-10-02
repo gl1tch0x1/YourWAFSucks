@@ -32,14 +32,21 @@ type Record struct {
 }
 
 func WriteJSONL(path string, findings []techniques.Result, target, version string) error {
-	f, err := os.Create(path)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	closed := false
+	defer func() {
+		if !closed {
+			_ = f.Close()
+		}
+	}()
+	if err := f.Chmod(0o600); err != nil {
+		return err
+	}
 
 	w := bufio.NewWriter(f)
-	defer w.Flush()
 
 	enc := json.NewEncoder(w)
 	scannedAt := time.Now().UTC()
@@ -52,7 +59,7 @@ func WriteJSONL(path string, findings []techniques.Result, target, version strin
 			Method:      f.Payload.Method,
 			URL:         sanitizeURL(f.Payload.URL),
 			Description: f.Payload.Description,
-			Headers:     f.Payload.Headers,
+			Headers:     sanitizeHeaders(f.Payload.Headers),
 		}
 		if f.Response != nil {
 			rec.Status = f.Response.Status
@@ -67,7 +74,33 @@ func WriteJSONL(path string, findings []techniques.Result, target, version strin
 			return err
 		}
 	}
+	if err := w.Flush(); err != nil {
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	closed = true
 	return nil
+}
+
+func sanitizeHeaders(headers map[string]string) map[string]string {
+	if len(headers) == 0 {
+		return nil
+	}
+	safe := make(map[string]string, len(headers))
+	for name, value := range headers {
+		switch strings.ToLower(strings.TrimSpace(name)) {
+		case "authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key", "api-key", "x-auth-token", "x-access-token":
+			safe[name] = "[REDACTED]"
+		default:
+			safe[name] = value
+		}
+	}
+	return safe
 }
 
 func sanitizeURL(raw string) string {

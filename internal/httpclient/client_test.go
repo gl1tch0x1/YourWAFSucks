@@ -61,3 +61,31 @@ func TestRequestRejectsHostOutsideAllowlist(t *testing.T) {
 		t.Fatalf("server received %d requests, want 0", got)
 	}
 }
+
+func TestRequestRejectsUntrustedTLSCertificate(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client := New(Config{Timeout: time.Second, MaxRetries: 0})
+	if _, err := client.Request(context.Background(), Request{Method: http.MethodGet, URL: server.URL}); err == nil {
+		t.Fatal("Request() accepted an untrusted TLS certificate")
+	}
+}
+
+func TestInvalidProxyFailsClosed(t *testing.T) {
+	client := New(Config{Proxy: "socks5://proxy.example:1080", Timeout: time.Second})
+	_, err := client.Request(context.Background(), Request{Method: http.MethodGet, URL: "http://example.test/"})
+	if err == nil {
+		t.Fatal("Request() silently ignored an unsupported proxy scheme")
+	}
+}
+
+func TestNegativeRetryCountReturnsError(t *testing.T) {
+	client := New(Config{MaxRetries: -1})
+	response, err := client.Request(context.Background(), Request{Method: http.MethodGet, URL: "http://example.test/"})
+	if err == nil || response != nil {
+		t.Fatalf("Request() = (%v, %v), want (nil, error)", response, err)
+	}
+}

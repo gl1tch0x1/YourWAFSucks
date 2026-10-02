@@ -1,4 +1,6 @@
 from pathlib import Path
+import os
+import shlex
 
 
 def write_markdown(path: Path, target: str, findings: list[dict]):
@@ -53,16 +55,16 @@ def write_markdown(path: Path, target: str, findings: list[dict]):
 
 def _repro_curl(f: dict) -> str:
     parts = [
-        "curl", "-sk",
+        "curl", "--silent", "--show-error",
         "-X", f.get("method", "GET"),
-        "-A", "'Mozilla/5.0'",
+        "-A", "Mozilla/5.0",
         "--path-as-is",
     ]
     for k, v in (f.get("headers") or {}).items():
-        parts += ["-H", f"'{k}: {v}'"]
+        parts += ["-H", f"{k}: {v}"]
     parts += [
-        "-o", "/dev/null",
-        "-w", "'%{http_code}'",
-        f"'{f.get('url', '')}'",
+        "-o", os.devnull,
+        "-w", "%{http_code}",
+        str(f.get("url", "")),
     ]
-    return " ".join(parts)
+    return shlex.join(parts)

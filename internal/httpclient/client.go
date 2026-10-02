@@ -3,7 +3,6 @@ package httpclient
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -44,19 +43,23 @@ type Client struct {
 	cfg      Config
 	http     *http.Client
 	requests atomic.Int64
+	initErr  error
 }
 
 func New(cfg Config) *Client {
 	transport := &http.Transport{
-		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
 		MaxIdleConns:        200,
 		MaxIdleConnsPerHost: 100,
 		IdleConnTimeout:     30 * time.Second,
 		DisableCompression:  false,
 	}
 
+	client := &Client{cfg: cfg}
 	if cfg.Proxy != "" {
-		if pu, err := url.Parse(cfg.Proxy); err == nil {
+		pu, err := url.Parse(cfg.Proxy)
+		if err != nil || pu.Hostname() == "" || (strings.ToLower(pu.Scheme) != "http" && strings.ToLower(pu.Scheme) != "https") {
+			client.initErr = errors.New("proxy URL must be a valid HTTP or HTTPS URL")
+		} else {
 			transport.Proxy = http.ProxyURL(pu)
 		}
 	}
@@ -64,7 +67,6 @@ func New(cfg Config) *Client {
 	// Enable HTTP/2 for HTTPS
 	_ = http2.ConfigureTransport(transport)
 
-	client := &Client{cfg: cfg}
 	client.http = &http.Client{
 		Timeout:   cfg.Timeout,
 		Transport: transport,
@@ -90,6 +92,12 @@ type Request struct {
 }
 
 func (c *Client) Request(ctx context.Context, r Request) (*Response, error) {
+	if c.initErr != nil {
+		return nil, c.initErr
+	}
+	if c.cfg.MaxRetries < 0 {
+		return nil, errors.New("maximum retries cannot be negative")
+	}
 	var lastErr error
 
 	for attempt := 0; attempt <= c.cfg.MaxRetries; attempt++ {

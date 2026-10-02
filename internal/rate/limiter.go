@@ -21,6 +21,12 @@ type Limiter struct {
 
 // New creates a new rate limiter
 func New(rate, burst int, adaptive bool) *Limiter {
+	if rate <= 0 {
+		rate = 1
+	}
+	if burst <= 0 {
+		burst = 1
+	}
 	return &Limiter{
 		rate:        rate,
 		burst:       burst,
@@ -35,25 +41,36 @@ func New(rate, burst int, adaptive bool) *Limiter {
 // Wait blocks until a token is available or context is cancelled
 func (l *Limiter) Wait(ctx context.Context) error {
 	for {
+		l.mu.Lock()
+		backoff := l.backoffTime
+		l.mu.Unlock()
+
+		if backoff > 0 {
+			timer := time.NewTimer(backoff)
+			select {
+			case <-timer.C:
+				l.mu.Lock()
+				if l.backoffTime == backoff {
+					l.backoffTime = 0
+				}
+				l.mu.Unlock()
+			case <-ctx.Done():
+				timer.Stop()
+				return ctx.Err()
+			}
+			continue
+		}
+
 		if err := l.wait(ctx); err != nil {
 			return err
 		}
 
-		// Check if we need to backoff due to errors
-		if l.backoffTime > 0 {
-			select {
-			case <-time.After(l.backoffTime):
-				l.mu.Lock()
-				l.backoffTime = 0
-				l.mu.Unlock()
-				// Continue the loop to try again after backoff
-				continue
-			case <-ctx.Done():
-				return ctx.Err()
-			}
+		l.mu.Lock()
+		backoff = l.backoffTime
+		l.mu.Unlock()
+		if backoff > 0 {
+			continue
 		}
-
-		// No backoff needed, return successfully
 		return nil
 	}
 }
@@ -80,9 +97,10 @@ func (l *Limiter) wait(ctx context.Context) error {
 
 	// Calculate wait time for next token
 	waitTime := time.Duration((1 - l.tokens) / float64(l.rate) * float64(time.Second))
-
+	timer := time.NewTimer(waitTime)
+	defer timer.Stop()
 	select {
-	case <-time.After(waitTime):
+	case <-timer.C:
 		l.tokens -= 1
 		return nil
 	case <-ctx.Done():
@@ -125,6 +143,9 @@ func (l *Limiter) RecordSuccess() {
 
 // SetRate dynamically adjusts the rate limit
 func (l *Limiter) SetRate(rate int) {
+	if rate <= 0 {
+		rate = 1
+	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
 

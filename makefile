@@ -23,10 +23,18 @@ install: build
 
 test: build
 	go test ./...
-	@if [ -d .venv ]; then \
-		.venv/bin/pytest tests/python -v; \
+	@if [ -x .venv/Scripts/python.exe ]; then \
+		.venv/Scripts/python.exe -m pytest tests/python -v; \
+	elif [ -x .venv/bin/python3 ]; then \
+		.venv/bin/python3 -m pytest tests/python -v; \
+	elif [ -x .venv/bin/python ]; then \
+		.venv/bin/python -m pytest tests/python -v; \
+	elif command -v python3 >/dev/null 2>&1; then \
+		python3 -m pytest tests/python -v; \
+	elif command -v python >/dev/null 2>&1; then \
+		python -m pytest tests/python -v; \
 	else \
-		python3 -m pytest tests/python -v || true; \
+		echo "Python unavailable; skipping optional Python tests."; \
 	fi
 
 fmt:

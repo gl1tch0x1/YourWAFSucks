@@ -15,6 +15,7 @@ code {{ background: #f4f4f4; padding: 2px 4px; border-radius: 3px; font-size: 0.
 .status-2xx {{ color: #2e7d32; font-weight: bold; }}
 .status-3xx {{ color: #00838f; font-weight: bold; }}
 .status-4xx {{ color: #f57c00; font-weight: bold; }}
+.status-5xx {{ color: #c62828; font-weight: bold; }}
 </style>
 </head><body>
 <h1>403 Bypass Report</h1>
@@ -37,7 +38,9 @@ def write_html(path: Path, target: str, findings: list[dict]):
     for f in findings:
         status = f.get("status", 0)
         cls = "status-2xx" if 200 <= status < 300 else (
-            "status-3xx" if 300 <= status < 400 else "status-4xx"
+            "status-3xx" if 300 <= status < 400 else (
+                "status-4xx" if 400 <= status < 500 else "status-5xx"
+            )
         )
         rows.append(f"""<tr>
 <td class="{cls}">{status}</td>

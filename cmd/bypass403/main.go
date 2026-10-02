@@ -100,7 +100,7 @@ func main() {
 	cfg, err := config.LoadOrDefault(*configFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[!] Failed to load config: %v\n", err)
-		cfg = config.DefaultConfig()
+		os.Exit(2)
 	}
 
 	// Override config with CLI flags
@@ -137,6 +137,18 @@ func main() {
 	if *maxDuration > 0 {
 		cfg.Security.MaxDuration = *maxDuration
 	}
+	if err := cfg.Validate(); err != nil {
+		fmt.Fprintf(os.Stderr, "[!] Invalid configuration: %v\n", err)
+		os.Exit(3)
+	}
+	if *maxRequests < 0 || *maxDuration < 0 {
+		fmt.Fprintln(os.Stderr, "[!] Request and duration limits cannot be negative")
+		os.Exit(3)
+	}
+	effectiveProxy := *proxyURL
+	if effectiveProxy == "" {
+		effectiveProxy = cfg.Proxy.URL
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Security.MaxDuration)
 	defer cancel()
@@ -161,7 +173,7 @@ func main() {
 	// --- HTTP client ---
 	clientCfg := httpclient.Config{
 		Timeout:      cfg.General.Timeout,
-		Proxy:        *proxyURL,
+		Proxy:        effectiveProxy,
 		Cookie:       *cookie,
 		UserAgent:    *userAgent,
 		Headers:      headers.Map(),
@@ -197,11 +209,14 @@ func main() {
 	techniques.RegisterAll(reg)
 
 	// Use config techniques if specified, otherwise use CLI flag
-	var selected []string
+	techniqueSelection := *techniquesFlag
 	if len(cfg.Techniques.Enabled) > 0 && *techniquesFlag == "all" {
-		selected = cfg.Techniques.Enabled
-	} else {
-		selected = parseTechniques(*techniquesFlag, reg.Names())
+		techniqueSelection = strings.Join(cfg.Techniques.Enabled, ",")
+	}
+	selected, err := parseTechniques(techniqueSelection, reg.Names())
+	if err != nil {
+		logger.Err("Invalid technique selection: %v", err)
+		os.Exit(3)
 	}
 
 	if len(selected) == 0 {
@@ -216,6 +231,10 @@ func main() {
 	logger.Info("Generating payloads for %d techniques...", len(selected))
 	var all []techniques.Payload
 	for _, name := range selected {
+		if name == "raw" || name == "protocol" {
+			logger.Warn("Technique %q is not supported by the current HTTP transport; skipping", name)
+			continue
+		}
 		tech := reg.Get(name)
 		if tech == nil {
 			continue
@@ -228,6 +247,10 @@ func main() {
 	}
 	logger.Info("Generated %d test cases", len(all))
 	logger.Info("Plan: %d payloads; maximum %d HTTP attempts over %s", len(all), cfg.Security.MaxRequestsPerTarget, cfg.Security.MaxDuration)
+	if len(all) == 0 {
+		logger.Err("Selected techniques produced no executable requests")
+		os.Exit(3)
+	}
 
 	if cfg.General.DryRun || *dryRun {
 		for _, p := range all {
@@ -244,6 +267,10 @@ func main() {
 	var wg sync.WaitGroup
 
 	go func() {
+		defer func() {
+			wg.Wait()
+			close(results)
+		}()
 		for _, p := range all {
 			if client.RequestsMade() >= int64(cfg.Security.MaxRequestsPerTarget) {
 				logger.Warn("Request budget reached; remaining payloads skipped")
@@ -291,8 +318,6 @@ func main() {
 				}
 			}(p)
 		}
-		wg.Wait()
-		close(results)
 	}()
 
 	// --- Collect ---
@@ -411,20 +436,30 @@ func normalizeTarget(target string) (string, error) {
 	return u.String(), nil
 }
 
-func parseTechniques(s string, available []string) []string {
+func parseTechniques(s string, available []string) ([]string, error) {
 	if s == "all" {
-		return available
+		return available, nil
 	}
 	m := make(map[string]bool)
 	for _, name := range available {
 		m[name] = true
 	}
 	var out []string
+	var unknown []string
+	seen := make(map[string]bool)
 	for _, name := range strings.Split(s, ",") {
 		name = strings.TrimSpace(name)
 		if m[name] {
-			out = append(out, name)
+			if !seen[name] {
+				out = append(out, name)
+				seen[name] = true
+			}
+		} else {
+			unknown = append(unknown, name)
 		}
 	}
-	return out
+	if len(unknown) > 0 {
+		return nil, fmt.Errorf("unknown techniques: %s", strings.Join(unknown, ", "))
+	}
+	return out, nil
 }

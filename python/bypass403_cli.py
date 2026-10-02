@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
 def parse_args():
@@ -103,39 +103,71 @@ def load_findings(path: Path) -> list[dict]:
     return out
 
 
+def sanitize_url(raw: str) -> str:
+    try:
+        parsed = urlsplit(raw)
+        hostname = parsed.hostname
+        if not parsed.scheme or not hostname:
+            return raw
+        if ":" in hostname:
+            hostname = f"[{hostname}]"
+        if parsed.port:
+            hostname = f"{hostname}:{parsed.port}"
+        sensitive = {
+            "token", "access_token", "refresh_token", "api_key", "apikey",
+            "secret", "password", "passwd", "authorization", "session", "cookie",
+        }
+        query = [
+            (key, "[REDACTED]" if key.lower().replace("-", "_") in sensitive else value)
+            for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        ]
+        return urlunsplit((parsed.scheme, hostname, parsed.path, urlencode(query), ""))
+    except ValueError:
+        return raw
+
+
 def main():
     args = parse_args()
 
-    jsonl_path = (
-        Path(args.jsonl)
-        if args.jsonl
-        else Path(args.output)
-        if args.output
-        else Path(tempfile.gettempdir()) / "bypass403-findings.jsonl"
-    )
+    if args.jsonl and args.output:
+        raise SystemExit("--jsonl and --output cannot be used together")
+    temporary_jsonl = not args.jsonl and not args.output
+    if args.jsonl:
+        jsonl_path = Path(args.jsonl)
+    elif args.output:
+        jsonl_path = Path(args.output)
+    else:
+        temporary_file = tempfile.NamedTemporaryFile(prefix="bypass403-", suffix=".jsonl", delete=False)
+        jsonl_path = Path(temporary_file.name)
+        temporary_file.close()
     jsonl_path.parent.mkdir(parents=True, exist_ok=True)
 
-    rc = run_go(args, jsonl_path)
-    findings = load_findings(jsonl_path)
+    try:
+        rc = run_go(args, jsonl_path)
+        findings = load_findings(jsonl_path)
+        report_target = findings[0].get("target", sanitize_url(args.url)) if findings else sanitize_url(args.url)
 
-    print(f"[*] Go engine produced {len(findings)} findings", file=sys.stderr)
+        print(f"[*] Go engine produced {len(findings)} findings", file=sys.stderr)
 
-    if args.md:
-        from report.markdown import write_markdown
-        write_markdown(Path(args.md), args.url, findings)
-        print(f"[+] Markdown: {args.md}", file=sys.stderr)
+        if args.md:
+            from report.markdown import write_markdown
+            write_markdown(Path(args.md), report_target, findings)
+            print(f"[+] Markdown: {args.md}", file=sys.stderr)
 
-    if args.html:
-        from report.html import write_html
-        write_html(Path(args.html), args.url, findings)
-        print(f"[+] HTML: {args.html}", file=sys.stderr)
+        if args.html:
+            from report.html import write_html
+            write_html(Path(args.html), report_target, findings)
+            print(f"[+] HTML: {args.html}", file=sys.stderr)
 
-    if args.webhook and findings:
-        from webhook.notify import send_webhook
-        send_webhook(args.webhook, args.url, findings)
-        print(f"[+] Webhook sent", file=sys.stderr)
+        if args.webhook and findings:
+            from webhook.notify import send_webhook
+            if send_webhook(args.webhook, report_target, findings):
+                print("[+] Webhook sent", file=sys.stderr)
 
-    sys.exit(rc)
+        sys.exit(rc)
+    finally:
+        if temporary_jsonl:
+            jsonl_path.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
