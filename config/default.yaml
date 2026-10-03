@@ -182,6 +182,10 @@ integration:
     enabled: false
     format: "junit"  # junit, sarif, github
     output_dir: "reports/"
+    sarif: ""        # path to write SARIF 2.1.0 output
+    junit: ""        # path to write JUnit XML output
+    fail_on_findings: false
+    min_score: 70
 
   # Security platform integration
   platforms:
@@ -201,3 +205,37 @@ integration:
       token: ""
       repo: ""
       auto_create_issues: false
+
+# Multi-session authorization testing (Phase 2)
+authorization:
+  enabled: false
+  openapi: ""              # path to an OpenAPI 3 / Swagger 2 document
+  baseline_session: "anonymous"
+  path_overrides: {}
+  sessions: {}
+    # admin:
+    #   type: cookie
+    #   cookie: "sid=..."
+    # api:
+    #   type: bearer
+    #   token: "..."
+
+# Intelligence features (Phase 3)
+intelligence:
+  adaptive: true
+  learning_file: ".bypass403-learning.json"
+  dependency_graph: true
+  behavioral: true
+  anomaly: true
+  confidence_min: 0.5
+
+# REST API server (Phase 4)
+api:
+  enabled: false
+  addr: "127.0.0.1:8787"
+  token: ""
+
+# Declarative plugins (Phase 4)
+plugins:
+  enabled: false
+  dir: "plugins"

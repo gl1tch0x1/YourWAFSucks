@@ -11,7 +11,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -291,6 +290,3 @@ func hashBody(body []byte) string {
 	sum := sha256.Sum256(body)
 	return hex.EncodeToString(sum[:])
 }
-
-// errNoExperiments is reserved for future callers that require a non-empty run.
-var errNoExperiments = errors.New("lab: no experiments provided")
