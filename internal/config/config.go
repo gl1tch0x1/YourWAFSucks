@@ -6,20 +6,57 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/gl1tch0x1/YourWAFSucks/internal/authz"
 	"gopkg.in/yaml.v3"
 )
 
 // Config represents the complete configuration structure
 type Config struct {
-	General     GeneralConfig     `yaml:"general"`
-	Techniques  TechniquesConfig  `yaml:"techniques"`
-	WAF         WAFConfig         `yaml:"waf"`
-	Proxy       ProxyConfig       `yaml:"proxy"`
-	Scoring     ScoringConfig     `yaml:"scoring"`
-	Evasion     EvasionConfig     `yaml:"evasion"`
-	Reporting   ReportingConfig   `yaml:"reporting"`
-	Security    SecurityConfig    `yaml:"security"`
-	Integration IntegrationConfig `yaml:"integration"`
+	General       GeneralConfig       `yaml:"general"`
+	Techniques    TechniquesConfig    `yaml:"techniques"`
+	WAF           WAFConfig           `yaml:"waf"`
+	Proxy         ProxyConfig         `yaml:"proxy"`
+	Scoring       ScoringConfig       `yaml:"scoring"`
+	Evasion       EvasionConfig       `yaml:"evasion"`
+	Reporting     ReportingConfig     `yaml:"reporting"`
+	Security      SecurityConfig      `yaml:"security"`
+	Integration   IntegrationConfig   `yaml:"integration"`
+	Authorization AuthorizationConfig `yaml:"authorization"`
+	Intelligence  IntelligenceConfig  `yaml:"intelligence"`
+	API           APIConfig           `yaml:"api"`
+	Plugins       PluginsConfig       `yaml:"plugins"`
+}
+
+// AuthorizationConfig controls multi-session authorization testing.
+type AuthorizationConfig struct {
+	Enabled       bool                             `yaml:"enabled"`
+	OpenAPI       string                           `yaml:"openapi"`
+	Baseline      string                           `yaml:"baseline_session"`
+	PathOverrides map[string]string                `yaml:"path_overrides"`
+	Sessions      map[string]authz.CredentialsConfig `yaml:"sessions"`
+}
+
+// IntelligenceConfig controls the adaptive scoring and analysis features.
+type IntelligenceConfig struct {
+	Adaptive        bool    `yaml:"adaptive"`
+	LearningFile    string  `yaml:"learning_file"`
+	DependencyGraph bool    `yaml:"dependency_graph"`
+	Behavioral      bool    `yaml:"behavioral"`
+	Anomaly         bool    `yaml:"anomaly"`
+	ConfidenceMin   float64 `yaml:"confidence_min"`
+}
+
+// APIConfig controls the REST API server.
+type APIConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Addr    string `yaml:"addr"`
+	Token   string `yaml:"token"`
+}
+
+// PluginsConfig controls declarative plugin loading.
+type PluginsConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Dir     string `yaml:"dir"`
 }
 
 type GeneralConfig struct {
