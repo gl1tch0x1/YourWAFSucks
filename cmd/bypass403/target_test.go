@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,6 +31,18 @@ func TestNormalizeTarget(t *testing.T) {
 				t.Errorf("normalizeTarget(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestPrintUsageGroupsAliasesOnce(t *testing.T) {
+	var output bytes.Buffer
+	printUsage(&output)
+	usage := output.String()
+	if strings.Count(usage, "-ms, --match-status") != 1 {
+		t.Fatalf("match-status aliases should appear once in help:\n%s", usage)
+	}
+	if strings.Count(usage, "-H, --header") != 1 {
+		t.Fatalf("header aliases should appear once in help:\n%s", usage)
 	}
 }
 

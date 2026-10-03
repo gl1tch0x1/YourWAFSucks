@@ -6,7 +6,9 @@ import (
 	"math"
 
 	"github.com/gl1tch0x1/YourWAFSucks/internal/calibrate"
+	"github.com/gl1tch0x1/YourWAFSucks/internal/differential"
 	"github.com/gl1tch0x1/YourWAFSucks/internal/httpclient"
+	"github.com/gl1tch0x1/YourWAFSucks/internal/similarity"
 )
 
 type Result struct {
@@ -15,10 +17,51 @@ type Result struct {
 	Reason      string
 	Replay      bool
 	ReplayCount int
+	// New differential fields
+	Differential *differential.Result `json:"differential,omitempty"`
+	Similarity   *similarity.Result   `json:"similarity,omitempty"`
 }
 
 func Compute(resp *httpclient.Response, cal *calibrate.Result) Result {
 	r := Result{}
+
+	// Initialize differential engine
+	diffEngine := differential.New(differential.Config{
+		BodySimilarityThreshold: 0.85,
+		TimingThreshold:         3.0,
+		SizeThreshold:           2.0,
+		EnableSemanticAnalysis:  true,
+	})
+
+	// Initialize similarity analyzer
+	simAnalyzer := similarity.New(similarity.Config{
+		EnableDOMAnalysis:   true,
+		EnableJSONAnalysis:  true,
+		EnableTextAnalysis:  true,
+		TokenNormalization:  true,
+		DynamicValueRemoval: true,
+		HTMLStructureWeight: 0.4,
+		TextContentWeight:   0.6,
+		JSONStructureWeight: 0.7,
+	})
+
+	// Perform differential analysis. Prefer the full baseline response captured
+	// during calibration, but fall back to the summarized calibration fields when
+	// only those are available (e.g. synthetic baselines in tests).
+	base := cal.BaselineResponse
+	if base.Status == 0 && cal.BaselineStatus != 0 {
+		base = httpclient.Response{
+			Status: cal.BaselineStatus,
+			Body:   cal.BaselineBody,
+			Time:   cal.BaselineTime,
+		}
+	}
+	diffResult := diffEngine.Analyze(&base, resp, cal)
+	r.Differential = &diffResult
+
+	// Perform similarity analysis
+	simResult := simAnalyzer.Analyze(cal.BaselineBody, resp.Body)
+	r.Similarity = &simResult
 
 	// --- Soft-404 filter ---
 	if cal.Soft404 && resp.Status == cal.Soft404Status {
@@ -41,8 +84,8 @@ func Compute(resp *httpclient.Response, cal *calibrate.Result) Result {
 		}
 	} else if resp.Status == 403 || resp.Status == 401 {
 		// --- Same status as baseline: check body/timing/size ---
-		bodySim := sim(resp.Body, cal.BaselineBody)
-		if bodySim < 0.85 {
+		// Use similarity analysis instead of raw sim()
+		if simResult.CombinedSimilarity < 0.85 {
 			r.Interesting = true
 			r.Score = 40
 			r.Reason = "body differs from baseline"
@@ -68,6 +111,16 @@ func Compute(resp *httpclient.Response, cal *calibrate.Result) Result {
 					r.Reason = "size anomaly"
 				}
 			}
+		}
+	}
+
+	// Enhance scoring with differential confidence
+	if diffResult.FindingConfidence > 0.7 {
+		r.Interesting = true
+		// Boost score based on differential confidence
+		r.Score = int(diffResult.FindingConfidence * 100)
+		if r.Reason == "" {
+			r.Reason = diffResult.Reason
 		}
 	}
 

@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # Nginx with basic auth
+  nginx-basic:
+    image: nginx:alpine
+    ports:
+      - "8081:80"
+    volumes:
+      - ./lab/nginx/basic-auth.conf:/etc/nginx/conf.d/default.conf
+      - ./lab/nginx/htpasswd:/etc/nginx/.htpasswd
+      - ./lab/nginx/html:/usr/share/nginx/html
+    networks:
+      - lab-network
+
+  # Apache with directory protection
+  apache-dir:
+    image: httpd:2.4
+    ports:
+      - "8082:80"
+    volumes:
+      - ./lab/apache/httpd.conf:/usr/local/apache2/conf/httpd.conf
+      - ./lab/apache/html:/usr/local/apache2/htdocs
+    networks:
+      - lab-network
+
+  # Envoy proxy with WAF-like behavior
+  envoy-waf:
+    image: envoyproxy/envoy:v1.29.0
+    ports:
+      - "8083:8080"
+    volumes:
+      - ./lab/envoy/envoy.yaml:/etc/envoy/envoy.yaml
+    networks:
+      - lab-network
+
+  # Vulnerable web application
+  vulnerable-app:
+    image: vulnerables/web-dvwa
+    ports:
+      - "8084:80"
+    environment:
+      - PHPIDS=0
+    networks:
+      - lab-network
+
+  # Authorization testing app
+  authz-app:
+    build: ./lab/authz-app
+    ports:
+      - "8085:8080"
+    networks:
+      - lab-network
+
+  # API gateway with auth
+  api-gateway:
+    image: kong:3.5
+    ports:
+      - "8086:8000"
+      - "8443:8443"
+    environment:
+      - KONG_DATABASE=off
+      - KONG_PROXY_ACCESS_LOG=/dev/stdout
+    networks:
+      - lab-network
+
+networks:
+  lab-network:
+    driver: bridge

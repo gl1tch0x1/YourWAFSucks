@@ -27,6 +27,51 @@ else
     RESET=""
 fi
 
+SHOW_HELP=0
+for arg in "$@"; do
+    case "$arg" in
+        -h|--help) SHOW_HELP=1 ;;
+    esac
+done
+
+if [[ "$SHOW_HELP" -eq 1 ]]; then
+    HELP_PYTHON=""
+    if [[ -x "$SCRIPT_DIR/.venv/Scripts/python.exe" ]]; then
+        HELP_PYTHON="$SCRIPT_DIR/.venv/Scripts/python.exe"
+    elif [[ -x "$SCRIPT_DIR/.venv/bin/python3" ]]; then
+        HELP_PYTHON="$SCRIPT_DIR/.venv/bin/python3"
+    elif [[ -x "$SCRIPT_DIR/.venv/bin/python" ]]; then
+        HELP_PYTHON="$SCRIPT_DIR/.venv/bin/python"
+    elif command -v python3 >/dev/null 2>&1; then
+        HELP_PYTHON="$(command -v python3)"
+    elif command -v python >/dev/null 2>&1; then
+        HELP_PYTHON="$(command -v python)"
+    fi
+
+    if [[ -n "$HELP_PYTHON" ]]; then
+        exec "$HELP_PYTHON" "$SCRIPT_DIR/python/bypass403_cli.py" \
+            --go-binary "$SCRIPT_DIR/bin/bypass403-go" --help
+    fi
+
+    HELP_GO=""
+    for candidate in \
+        "$SCRIPT_DIR/bin/bypass403-go" \
+        "$SCRIPT_DIR/bypass403-go" \
+        "$(command -v bypass403-go 2>/dev/null || true)"; do
+        if [[ -n "$candidate" && -x "$candidate" ]]; then
+            HELP_GO="$candidate"
+            break
+        fi
+    done
+    if [[ -n "$HELP_GO" ]]; then
+        exec "$HELP_GO" --help
+    fi
+
+    printf 'Usage: ./bypass403.sh -u URL [options]\n'
+    printf 'Run setup.sh to build the Go engine. Python 3 enables batch and report options.\n'
+    exit 0
+fi
+
 QUIET=0
 for arg in "$@"; do
     case "$arg" in
@@ -103,12 +148,12 @@ elif command -v python >/dev/null 2>&1; then
 fi
 
 # --- Decide execution path ---
-# If report flags are used, delegate to Python (which spawns Go).
+# If list/report flags are used, delegate to Python (which spawns Go).
 # Otherwise, run Go directly (fastest path).
 NEEDS_PYTHON=0
 for arg in "$@"; do
     case "$arg" in
-        --md|--md=*|--html|--html=*|--webhook|--webhook=*|--jsonl|--jsonl=*) NEEDS_PYTHON=1 ;;
+        --list|--list=*|-l|-l=*|--md|--md=*|--html|--html=*|--webhook|--webhook=*|--jsonl|--jsonl=*) NEEDS_PYTHON=1 ;;
     esac
 done
 
@@ -119,7 +164,8 @@ if [ "$NEEDS_PYTHON" -eq 1 ] && [ -n "$PY" ]; then
 fi
 
 if [ "$NEEDS_PYTHON" -eq 1 ] && [ -z "$PY" ]; then
-    warn "Python not found; report and webhook features are unavailable"
+    fail "Python 3 is required for multi-target and report options"
+    exit 2
 fi
 
 step "DIRECT ENGINE / Go fast path"

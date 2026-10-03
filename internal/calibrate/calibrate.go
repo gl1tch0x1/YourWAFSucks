@@ -14,11 +14,12 @@ import (
 )
 
 type Result struct {
-	BaselineStatus int
-	BaselineSize   int
-	BaselineTime   time.Duration
-	BaselineHash   string
-	BaselineBody   []byte
+	BaselineStatus   int
+	BaselineSize     int
+	BaselineTime     time.Duration
+	BaselineHash     string
+	BaselineBody     []byte
+	BaselineResponse httpclient.Response // Added for differential analysis
 
 	Soft404       bool
 	Soft404Status int
@@ -75,6 +76,16 @@ func Run(ctx context.Context, client *httpclient.Client, target string) (*Result
 		r.BaselineBody = bodies[bestIdx]
 		h := sha1.Sum(r.BaselineBody)
 		r.BaselineHash = hex.EncodeToString(h[:])
+
+		// Store baseline response for differential analysis
+		// Reconstruct the response from the stored data
+		r.BaselineResponse = httpclient.Response{
+			Status:      r.BaselineStatus,
+			Body:        r.BaselineBody,
+			ContentType: "", // Would need to be captured during request
+			Time:        r.BaselineTime,
+			Headers:     nil, // Would need to be captured during request
+		}
 	}
 
 	// --- Soft-404 probe (2 random paths) ---

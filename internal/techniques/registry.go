@@ -1,6 +1,7 @@
 package techniques
 
 import (
+	"github.com/gl1tch0x1/YourWAFSucks/internal/differential"
 	"github.com/gl1tch0x1/YourWAFSucks/internal/httpclient"
 	"github.com/gl1tch0x1/YourWAFSucks/internal/score"
 )
@@ -21,10 +22,11 @@ type Payload struct {
 }
 
 type Result struct {
-	Payload     Payload
-	Response    *httpclient.Response
-	Score       score.Result
-	ReplayCount int
+	Payload      Payload
+	Response     *httpclient.Response
+	Score        score.Result
+	ReplayCount  int
+	Differential *differential.Result `json:"differential,omitempty"`
 }
 
 type Technique interface {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"os/signal"
@@ -68,6 +69,9 @@ func main() {
 	flag.Var(&headers, "header", "Custom header (repeatable)")
 	var allowedHosts stringListFlag
 	flag.Var(&allowedHosts, "allow-host", "Allowed request hostname (repeatable, exact match)")
+	flag.Usage = func() {
+		printUsage(flag.CommandLine.Output())
+	}
 
 	flag.Parse()
 
@@ -361,6 +365,38 @@ func main() {
 // ------------------------------------------------------------
 // Helpers
 // ------------------------------------------------------------
+
+func printUsage(w io.Writer) {
+	fmt.Fprintln(w, "Usage: bypass403 -u URL [options]")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "Target and technique options:")
+	fmt.Fprintln(w, "  -u, --url, --target URL       Target URL")
+	fmt.Fprintln(w, "  -k, --techniques LIST         Comma-separated technique names or all")
+	fmt.Fprintln(w, "  -H, --header HEADER           Add a request header (repeatable)")
+	fmt.Fprintln(w, "  -b, --cookie COOKIE           Cookie header")
+	fmt.Fprintln(w, "  -A, --user-agent STRING       User-Agent value")
+	fmt.Fprintln(w, "  -x, --proxy URL               HTTP(S) proxy URL")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "Scan limits and output:")
+	fmt.Fprintln(w, "  -j, --jobs N                  Worker count")
+	fmt.Fprintln(w, "  -rate, --rate-limit N         Requests per second")
+	fmt.Fprintln(w, "  --timeout DURATION            Per-request timeout (default 10s)")
+	fmt.Fprintln(w, "  --retries N                   Maximum retries per request")
+	fmt.Fprintln(w, "  --max-requests N              Maximum HTTP attempts for this target")
+	fmt.Fprintln(w, "  --max-duration DURATION       Maximum scan duration")
+	fmt.Fprintln(w, "  --allow-host HOST             Exact allowed hostname (repeatable)")
+	fmt.Fprintln(w, "  -ms, --match-status CODES     Display selected status codes, comma-separated")
+	fmt.Fprintln(w, "  -o, --output PATH             Write findings as JSONL")
+	fmt.Fprintln(w, "  -n, --dry-run                 Print planned requests without sending them")
+	fmt.Fprintln(w, "  --no-retest                   Skip replay verification")
+	fmt.Fprintln(w, "  -q, --quiet                   Quiet mode")
+	fmt.Fprintln(w, "  -v, --verbose                 Verbose logging")
+	fmt.Fprintln(w, "  --config PATH                 Configuration file")
+	fmt.Fprintln(w, "  --version                     Print version")
+	fmt.Fprintln(w, "  -h, --help                    Show this help")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "Batch and report options (via ./bypass403.sh): --list, --md, --html, --webhook, --jsonl")
+}
 
 type headerFlag []string
 

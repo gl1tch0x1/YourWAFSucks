@@ -194,9 +194,30 @@ func (l *Logger) Banner(version, target string) {
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	fmt.Fprintf(l.w, "\n  %s\n", l.paint("1;36", "SCAN DETAILS"))
-	fmt.Fprintf(l.w, "  %s %s\n", l.paint("1;36", "VERSION"), version)
-	fmt.Fprintf(l.w, "  %s %s\n\n", l.paint("1;36", "TARGET "), l.paint("1;37", target))
+
+	banner := `
+%s
+    ██╗    ██╗██╗███╗   ███╗ ██████╗ ██╗    ██╗██╗███╗   ███╗
+    ██║    ██║██║████╗ ████║██╔════╝ ██║    ██║██║████╗ ████║
+    ██║ █╗ ██║██║██╔████╔██║██║  ███╗██║ █╗ ██║██║██╔████╔██║
+    ██║███╗██║██║██║╚██╔╝██║██║   ██║██║███╗██║██║██║╚██╔╝██║
+    ╚███╔███╔╝██║██║ ╚═╝ ██║╚██████╔╝╚███╔███╔╝██║██║ ╚═╝ ██║
+     ╚══╝╚══╝ ╚═╝╚═╝     ╚═╝ ╚═════╝  ╚══╝╚══╝ ╚═╝╚═╝     ╚═╝
+%s
+    %s v%s
+%s
+    "Because 403 just means 'try harder'" 😏
+%s
+`
+	fmt.Fprintf(l.w, banner,
+		l.paint("1;36", "╔══════════════════════════════════════════════════════════════╗"),
+		l.paint("1;36", "║                                                              ║"),
+		l.paint("1;33", "YOURWAFSUCKS"),
+		version,
+		l.paint("1;36", "║                                                              ║"),
+		l.paint("1;36", "╚══════════════════════════════════════════════════════════════╝"),
+	)
+	fmt.Fprintf(l.w, "  %s %s\n\n", l.paint("1;36", "TARGET:"), l.paint("1;37", target))
 	l.w.Flush()
 }
 

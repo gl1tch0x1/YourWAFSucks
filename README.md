@@ -25,12 +25,37 @@ The tool performs the following core actions:
 
 ## Key Features
 
+### Core Testing Engine
+- **Differential response analysis** - Baseline-versus-mutation comparison across status, body, headers, timing, and semantic content
+- **Semantic body similarity** - HTML DOM structure, visible text, JSON structural comparison with token normalization
+- **Transport abstraction** - HTTP/1.1, HTTP/2, and raw HTTP support with proxy rotation and redirect control
+- **Response clustering** - Groups similar responses to reduce noisy findings
+- **Evidence collection** - Structured evidence packages with baseline, mutation, and replay information
+- **Replay verification** - Multi-replay validation to confirm stable findings
+
+### Authorization Testing
+- **Multi-session support** - Anonymous, user, and admin contexts with credential management
+- **Authorization matrix** - Role-based access control expectations and horizontal/vertical testing
+- **OpenAPI ingestion** - Parse OpenAPI 3.x and Swagger 2.0 specs for automated endpoint discovery
+- **API authorization testing** - Test API endpoints across different session contexts
+
+### Intelligence & Adaptation
+- **Adaptive test prioritization** - Learn from technique success rates and prioritize effective mutations
+- **Mutation dependency graph** - Composable mutation pipelines with dependency ordering
+- **Behavioral fingerprinting** - Profile WAF/frontend behavior (path normalization, header case, encoding)
+
+### Platform Features
+- **REST API** - Scan management, authorization test endpoints, session management, evidence retrieval
+- **SARIF output** - Static Analysis Results Interchange Format 2.1.0 for CI/CD integration
+- **Plugin SDK** - Extensible architecture for custom techniques, fingerprints, transports, and reporters
+- **Docker laboratory** - Reproducible test environments with Nginx-based authorization test app
+
+### Original Features
 - WAF and frontend fingerprinting
 - Baseline calibration against a target
 - Technique-driven payload generation
 - Adaptive rate limiting with backoff behavior
 - Proxy-aware HTTP transport
-- Replay verification for suspicious results
 - JSONL, Markdown, and HTML reporting hooks
 - YAML-based configuration support
 - CLI-driven execution and automation-friendly output
@@ -82,12 +107,25 @@ graph TD
     E --> F[internal/httpclient]
     E --> G[internal/rate]
     E --> H[internal/proxy]
-    D --> I[internal/score]
-    I --> J[internal/replay]
-    J --> K[internal/output]
-    B --> L[config/default.yaml]
-    M[python/bypass403_cli.py] --> N[python/report]
-    M --> O[python/webhook]
+    D --> I[internal/differential]
+    I --> J[internal/similarity]
+    I --> K[internal/transport]
+    I --> L[internal/clustering]
+    I --> M[internal/evidence]
+    I --> N[internal/replay]
+    N --> O[internal/output]
+    A --> P[internal/authz]
+    P --> Q[internal/openapi]
+    P --> R[internal/api]
+    A --> S[internal/adaptive]
+    A --> T[internal/graph]
+    A --> U[internal/behavior]
+    A --> V[internal/restapi]
+    V --> W[internal/sarif]
+    V --> X[internal/plugin]
+    B --> Y[config/default.yaml]
+    Z[python/bypass403_cli.py] --> AA[python/report]
+    Z --> AB[python/webhook]
 ```
 
 ### Request workflow
@@ -132,17 +170,49 @@ sequenceDiagram
 │   ├── proxies.txt
 │   └── waf_signatures.json
 ├── internal/
-│   ├── calibrate/
-│   ├── config/
-│   ├── fingerprint/
-│   ├── httpclient/
-│   ├── output/
-│   ├── proxy/
-│   ├── rate/
-│   ├── rawhttp/
-│   ├── replay/
-│   ├── score/
-│   └── techniques/
+│   ├── adaptive/          # Adaptive test prioritization
+│   ├── anomaly/           # Anomaly detection
+│   ├── api/               # API authorization testing
+│   ├── apiauthz/          # API authorization context
+│   ├── authz/             # Authorization matrix & sessions
+│   ├── behavior/          # Behavioral fingerprinting
+│   ├── calibrate/         # Baseline calibration
+│   ├── cicd/              # CI/CD integration
+│   ├── clustering/        # Response clustering
+│   ├── confidence/        # Confidence scoring
+│   ├── config/            # Configuration management
+│   ├── depgraph/          # Dependency graph
+│   ├── differential/      # Differential response engine
+│   ├── evidence/          # Evidence collection
+│   ├── fingerprint/       # WAF/frontend fingerprinting
+│   ├── graph/             # Mutation dependency graph
+│   ├── httpclient/        # HTTP client
+│   ├── openapi/           # OpenAPI spec parsing
+│   ├── output/            # Output formatting
+│   ├── plugin/            # Plugin manager
+│   ├── proxy/             # Proxy rotation
+│   ├── rate/              # Rate limiting
+│   ├── rawhttp/           # Raw HTTP builders
+│   ├── replay/            # Replay verification
+│   ├── report/            # Report generation
+│   ├── research/          # Research modules
+│   │   ├── h2/            # HTTP/2 behavior research
+│   │   ├── normalize/     # Path normalization research
+│   │   └── proxyorigin/   # Proxy origin research
+│   ├── restapi/           # REST API server
+│   ├── sarif/             # SARIF output
+│   ├── score/             # Response scoring
+│   ├── similarity/        # Semantic similarity analysis
+│   ├── techniques/        # Technique registry
+│   └── transport/         # Transport abstraction
+├── lab/
+│   ├── docker-compose.yml
+│   ├── nginx/
+│   │   ├── basic-auth.conf
+│   │   └── htpasswd
+│   └── authz-app/
+│       ├── Dockerfile
+│       └── main.go
 ├── payloads/
 ├── python/
 │   ├── bypass403_cli.py
@@ -221,6 +291,16 @@ go build -ldflags "-s -w" -o bin/bypass403-go ./cmd/bypass403
 ./bypass403.sh -u https://target.example.com -k all -j 20 -v
 ```
 
+For an authorized batch, create a file with one URL per line and run:
+
+```bash
+./bypass403.sh --list targets.txt \
+  --allow-host example.com --allow-host api.example.com \
+  --max-requests 400 --max-duration 20m
+```
+
+Batch mode requires exact host allowlisting and explicit global request and duration budgets. It validates every target before scanning, limits batches to 100 unique targets, runs them sequentially, allocates the budgets across them, and combines JSONL findings. Python 3 is required for batch orchestration.
+
 With output file:
 
 ```bash
@@ -243,6 +323,7 @@ With output file:
 --max-requests             Maximum HTTP attempts per target
 --max-duration             Maximum scan duration (for example, 1h)
 --allow-host               Exact allowed hostname (repeatable; does not include subdomains)
+-l, --list                 File with one target URL per line (batch mode)
 -ms, --match-status        Display responses with selected status codes (comma-separated)
 -n, --dry-run              Print planned requests without sending them
 -q, --quiet                Quiet mode
@@ -284,9 +365,48 @@ The default safety limits are 10,000 HTTP attempts per target and a one-hour max
 2. A baseline request is established to understand the normal shape of the application’s response.
 3. Registered bypass techniques are generated and prioritized based on the detected frontend.
 4. A rate-limited worker pool sends mutation requests to the target.
-5. Each response is scored and compared with the baseline.
-6. High-signal findings are replayed to confirm they are not false positives.
-7. Results are written to log, JSONL, Markdown, or HTML output.
+5. Each response is scored and compared with the baseline using differential analysis.
+6. Semantic similarity analysis groups similar responses to reduce noise.
+7. High-signal findings are replayed to confirm they are not false positives.
+8. Authorization testing across multiple session contexts identifies privilege escalation.
+9. Results are written to log, JSONL, Markdown, HTML, or SARIF format.
+
+## Architecture Phases
+
+The YourWAFSucks architecture was developed in five phases to create a comprehensive differential authorization testing framework:
+
+### Phase 1: Engine Quality
+- Differential response engine with multi-feature comparison
+- Semantic body similarity (HTML DOM, visible text, JSON structure)
+- Transport abstraction (HTTP/1.1, HTTP/2, raw HTTP)
+- Response clustering to reduce noisy findings
+- Structured evidence collection
+- Replay verification for stable findings
+
+### Phase 2: Authorization
+- Multi-session support (anonymous, user, admin)
+- Authorization matrix for role-based access control
+- OpenAPI 3.x and Swagger 2.0 spec ingestion
+- API authorization testing across session contexts
+- Horizontal and vertical privilege escalation detection
+
+### Phase 3: Intelligence
+- Adaptive test prioritization based on success rates
+- Mutation dependency graph with cycle detection
+- Composable mutation pipelines
+- Behavioral fingerprinting (path normalization, header case, encoding)
+
+### Phase 4: Platform
+- REST API for scan management and control
+- SARIF 2.1.0 output for CI/CD integration
+- Plugin SDK for extensibility
+- Health checks and session management
+
+### Phase 5: Research
+- HTTP/2 behavior research module
+- Reproducible WAF test laboratory with Docker Compose
+- Nginx-based test environments
+- Authorization test application for validation
 
 ## Reporting and output
 
