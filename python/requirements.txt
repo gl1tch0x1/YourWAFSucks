@@ -1,3 +1,22 @@
-# Only needed for advanced features (report templating, etc.)
-jinja2>=3.1.0
-rich>=13.7.0
+# YourWAFSucks Python Dependencies
+# Required for advanced features: report generation, webhook integration, batch processing
+
+# Core dependencies
+jinja2>=3.1.0          # Template engine for report generation
+rich>=13.7.0           # Rich terminal output and formatting
+pyyaml>=6.0            # YAML configuration parsing
+requests>=2.31.0       # HTTP client for webhook notifications
+beautifulsoup4>=4.12.0 # HTML parsing for response analysis
+lxml>=4.9.0            # XML/HTML parser backend
+
+# Optional but recommended
+colorama>=0.4.6        # Cross-platform colored terminal text
+click>=8.1.0           # CLI framework for Python utilities
+markdown>=3.5.0        # Markdown rendering for reports
+pygments>=2.16.0       # Syntax highlighting
+
+# Development dependencies (optional)
+# pytest>=7.4.0
+# pytest-cov>=4.1.0
+# black>=23.0.0
+# flake8>=6.0.0

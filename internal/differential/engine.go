@@ -1,6 +1,8 @@
 package differential
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"time"
@@ -364,19 +366,11 @@ func (r *Result) IsInteresting(threshold float64) bool {
 // Helper functions
 
 func hash(data []byte) string {
-	// Simple hash for now - can be upgraded to SHA-256
 	if len(data) == 0 {
 		return ""
 	}
-	// Use first 8 bytes as simple hash
-	h := uint32(0)
-	for i, b := range data {
-		h = h*31 + uint32(b)
-		if i >= 100 { // Limit to first 100 bytes
-			break
-		}
-	}
-	return string(rune(h))
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:8]) // First 8 bytes for brevity
 }
 
 func calculateByteSimilarity(a, b []byte) float64 {
