@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"golang.org/x/net/http2"
+	"crypto/tls"
 )
 
 type Config struct {
@@ -52,6 +53,7 @@ func New(cfg Config) *Client {
 		MaxIdleConnsPerHost: 100,
 		IdleConnTimeout:     30 * time.Second,
 		DisableCompression:  false,
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
 	}
 
 	client := &Client{cfg: cfg}

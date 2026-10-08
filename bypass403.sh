@@ -413,6 +413,7 @@ if [[ "$QUIET" -eq 0 ]]; then
 fi
 
 PY=""
+# Check venv directory first
 if [[ -x "$SCRIPT_DIR/.venv/Scripts/python.exe" ]]; then
     PY="$SCRIPT_DIR/.venv/Scripts/python.exe"
     [[ "$QUIET" -eq 0 ]] && success "Python venv found"
@@ -422,6 +423,16 @@ elif [[ -x "$SCRIPT_DIR/.venv/bin/python3" ]]; then
 elif [[ -x "$SCRIPT_DIR/.venv/bin/python" ]]; then
     PY="$SCRIPT_DIR/.venv/bin/python"
     [[ "$QUIET" -eq 0 ]] && success "Python venv found"
+# Check common system locations
+elif [[ -x "/usr/local/bin/python3" ]]; then
+    PY="/usr/local/bin/python3"
+    [[ "$QUIET" -eq 0 ]] && success "Python 3 found in /usr/local/bin"
+elif [[ -x "/usr/bin/python3" ]]; then
+    PY="/usr/bin/python3"
+    [[ "$QUIET" -eq 0 ]] && success "Python 3 found in /usr/bin"
+elif [[ -x "/usr/local/bin/python" ]]; then
+    PY="/usr/local/bin/python"
+    [[ "$QUIET" -eq 0 ]] && success "Python found in /usr/local/bin"
 elif command -v python3 >/dev/null 2>&1; then
     PY="$(command -v python3)"
     [[ "$QUIET" -eq 0 ]] && success "Python 3 found"
@@ -455,6 +466,14 @@ if [[ "$NEEDS_PYTHON" -eq 1 ]]; then
         printf '%s  Install Python 3 and run: %s./setup.sh%s\n' "$DIM" "$BOLD" "$RESET"
         exit 2
     fi
+else
+    # Run Go directly for fastest path
+    if [[ "$QUIET" -eq 0 ]]; then
+        step "Starting differential authorization test..."
+        progress "Session: $SESSION_ID"
+        print_separator
+    fi
+    exec "$GO_BIN" "$@"
 fi
 
 # ============================================

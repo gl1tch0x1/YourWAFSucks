@@ -120,9 +120,6 @@ func main() {
 	if *proxyURL != "" {
 		cfg.Proxy.URL = *proxyURL
 	}
-	if *cookie != "" {
-		// Will be set in client config
-	}
 	if *verbose {
 		cfg.General.Verbose = true
 	}
@@ -199,8 +196,8 @@ func main() {
 	logger.Info("Establishing baseline...")
 	cal, err := calibrate.Run(ctx, client, *target)
 	if err != nil {
-		logger.Err("Calibration failed: %v", err)
-		os.Exit(2)
+		logger.Warn("Calibration failed: %v; continuing without baseline data", err)
+		cal = &calibrate.Result{BaselineStatus: 0, BaselineSize: 0, BaselineTime: 0}
 	}
 	logger.Info("Baseline: %d (size=%d, time=%.3fs)",
 		cal.BaselineStatus, cal.BaselineSize, cal.BaselineTime.Seconds())
