@@ -133,18 +133,11 @@ progress() {
 # ============================================
 # Visual Elements
 # ============================================
-print_banner() {
-    printf '\n'
-    printf '%s%s' "$CYAN"
-    cat <<'BANNER'
-▄· ▄▌      ▄• ▄▌▄▄▄  ▄▄▌ ▐ ▄▌ ▄▄▄· ·▄▄▄.▄▄ · ▄• ▄▌ ▄▄· ▄ •▄ .▄▄ ·
-▐█▪██▌▪     █▪██▌▀▄ █·██· █▌▐█▐█ ▀█ ▐▄▄·▐█ ▀. █▪██▌▐█ ▌▪█▌▄▌▪▐█ ▀.
-▐█▌▐█▪ ▄█▀▄ █▌▐█▌▐▀▀▄ ██▪▐█▐▐▌▄█▀▀█ ██▪ ▄▀▀▀█▄█▌▐█▌██ ▄▄▐▀▀▄·▄▀▀▀█▄
- ▐█▀·.▐█▌.▐▌▐█▄█▌▐█•█▌▐█▌██▐█▌▐█ ▪▐▌██▌.▐█▄▪▐█▐█▄█▌▐███▌▐█.█▌▐█▄▪▐█
-    ▀ •  ▀█▄▀▪ ▀▀▀ .▀  ▀ ▀▀▀▀ ▀▪ ▀  ▀ ▀▀▀  ▀▀▀▀  ▀▀▀ ·▀▀▀ ·▀  ▀ ▀▀▀▀
-BANNER
-    printf '%s\n' "$RESET"
-    printf '%s%s  Because 403 just means "try harder"%s\n\n' "$MAGENTA" "$BOLD" "$RESET"
+
+print_header() {
+    local title="$1"
+    printf '\n%s%s[ %s ]%s\n' "$BOLD" "$CYAN" "$title" "$RESET"
+    print_separator
 }
 
 print_box() {
@@ -262,7 +255,7 @@ done
 # Handle Special Commands
 # ============================================
 if [[ "$SHOW_VERSION" -eq 1 ]]; then
-    print_banner
+    print_header
     version=$(get_version)
     printf '%sYourWAFSucks Version:%s %s\n' "$BOLD" "$CYAN" "$version"
     printf '%sSession ID:%s %s\n' "$BOLD" "$CYAN" "$SESSION_ID"
@@ -270,14 +263,14 @@ if [[ "$SHOW_VERSION" -eq 1 ]]; then
 fi
 
 if [[ "$SHOW_ENV" -eq 1 ]]; then
-    print_banner
+    print_header
     check_environment
     print_environment
     exit 0
 fi
 
 if [[ "$SHOW_HELP" -eq 1 ]]; then
-    print_banner
+    print_header
     print_box "YourWAFSucks - Differential Authorization Testing" "$CYAN"
     printf '\n'
     
@@ -339,7 +332,7 @@ fi
 # Display Banner (unless quiet)
 # ============================================
 if [[ "$QUIET" -eq 0 ]]; then
-    print_banner
+    print_header
     
     # Environment check
     if ! check_environment; then
