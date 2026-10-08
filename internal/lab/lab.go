@@ -198,9 +198,9 @@ type Outcome struct {
 
 // Trial records a full run of a Spec against a set of Experiments.
 type Trial struct {
-	Spec        Spec
-	Experiments []Experiment
-	Outcomes    []Outcome
+	Spec         Spec
+	Experiments  []Experiment
+	Outcomes     []Outcome
 	Reproducible bool
 }
 
