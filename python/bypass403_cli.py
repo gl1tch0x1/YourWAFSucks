@@ -41,16 +41,16 @@ def parse_args():
     targets.add_argument("-u", "--url", "--target")
     targets.add_argument("-l", "--list", dest="target_list", help="File containing targets (one URL per line)")
     p.add_argument("-k", "--techniques", default="all")
-    p.add_argument("-j", "--jobs", type=int, default=20)
+    p.add_argument("-j", "--jobs", type=int)
     p.add_argument("-H", "--header", action="append", default=[])
     p.add_argument("-b", "--cookie", default="")
     p.add_argument("-A", "--user-agent", default="")
     p.add_argument("-x", "--proxy", default="")
     p.add_argument("-o", "--output", default="")
     p.add_argument("--config", default="")
-    p.add_argument("--timeout", default="10s")
-    p.add_argument("--rate", "--rate-limit", dest="rate_limit", type=int, default=100)
-    p.add_argument("--retries", type=int, default=2)
+    p.add_argument("--timeout")
+    p.add_argument("--rate", "--rate-limit", dest="rate_limit", type=int)
+    p.add_argument("--retries", type=int)
     p.add_argument("--max-requests", type=int, default=0)
     p.add_argument("--max-duration", default="")
     p.add_argument("--allow-host", action="append", default=[])
@@ -177,13 +177,17 @@ def run_go(args, jsonl_path: Path, *, url: str | None = None,
         args.go_binary,
         "-u", target_url,
         "-k", args.techniques,
-        "-j", str(args.jobs),
         "-b", args.cookie,
         "-o", str(jsonl_path),
-        "--timeout", args.timeout,
-        "--rate-limit", str(args.rate_limit),
-        "--retries", str(args.retries),
     ]
+    if args.jobs is not None:
+        cmd += ["-j", str(args.jobs)]
+    if args.timeout is not None:
+        cmd += ["--timeout", args.timeout]
+    if args.rate_limit is not None:
+        cmd += ["--rate-limit", str(args.rate_limit)]
+    if args.retries is not None:
+        cmd += ["--retries", str(args.retries)]
     if args.user_agent:
         cmd += ["--user-agent", args.user_agent]
     request_limit = args.max_requests if max_requests is None else max_requests

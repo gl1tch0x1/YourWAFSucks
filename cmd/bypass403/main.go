@@ -15,12 +15,14 @@ import (
 	"time"
 
 	"github.com/gl1tch0x1/YourWAFSucks/internal/calibrate"
+	"github.com/gl1tch0x1/YourWAFSucks/internal/cicd"
 	"github.com/gl1tch0x1/YourWAFSucks/internal/config"
 	"github.com/gl1tch0x1/YourWAFSucks/internal/fingerprint"
 	"github.com/gl1tch0x1/YourWAFSucks/internal/httpclient"
 	"github.com/gl1tch0x1/YourWAFSucks/internal/output"
 	"github.com/gl1tch0x1/YourWAFSucks/internal/rate"
 	"github.com/gl1tch0x1/YourWAFSucks/internal/replay"
+	"github.com/gl1tch0x1/YourWAFSucks/internal/sarif"
 	"github.com/gl1tch0x1/YourWAFSucks/internal/score"
 	"github.com/gl1tch0x1/YourWAFSucks/internal/techniques"
 )
@@ -39,6 +41,8 @@ func main() {
 		jobs           = flag.Int("j", 20, "Parallel jobs")
 		rateLimit      = flag.Int("rate", 100, "Rate limit (requests per second)")
 		outputPath     = flag.String("o", "", "Output JSONL path")
+		sarifPath      = flag.String("sarif", "", "Write findings as SARIF")
+		junitPath      = flag.String("junit", "", "Write findings as JUnit XML")
 		verbose        = flag.Bool("v", false, "Verbose")
 		quiet          = flag.Bool("q", false, "Quiet")
 		dryRun         = flag.Bool("n", false, "Dry run")
@@ -74,6 +78,16 @@ func main() {
 	}
 
 	flag.Parse()
+	providedFlags := make(map[string]bool)
+	flag.Visit(func(f *flag.Flag) { providedFlags[f.Name] = true })
+	provided := func(names ...string) bool {
+		for _, name := range names {
+			if providedFlags[name] {
+				return true
+			}
+		}
+		return false
+	}
 
 	if *showVer {
 		fmt.Println(Version)
@@ -108,35 +122,38 @@ func main() {
 	}
 
 	// Override config with CLI flags
-	if *timeout != 10*time.Second {
+	if provided("timeout") {
 		cfg.General.Timeout = *timeout
 	}
-	if *jobs != 20 {
+	if provided("j", "jobs") {
 		cfg.General.Workers = *jobs
 	}
-	if *rateLimit != 100 {
+	if provided("rate", "rate-limit") {
 		cfg.General.RateLimit = *rateLimit
 	}
-	if *proxyURL != "" {
+	if provided("x", "proxy") {
 		cfg.Proxy.URL = *proxyURL
 	}
-	if *verbose {
-		cfg.General.Verbose = true
+	if provided("v", "verbose") {
+		cfg.General.Verbose = *verbose
 	}
-	if *quiet {
-		cfg.General.Quiet = true
+	if provided("q", "quiet") {
+		cfg.General.Quiet = *quiet
 	}
-	if *noRetest {
-		cfg.General.NoRetest = true
+	if provided("no-retest") {
+		cfg.General.NoRetest = *noRetest
 	}
-	if *maxRetries != 2 {
+	if provided("retries") {
 		cfg.General.MaxRetries = *maxRetries
 	}
-	if *maxRequests > 0 {
+	if provided("max-requests") && *maxRequests > 0 {
 		cfg.Security.MaxRequestsPerTarget = *maxRequests
 	}
-	if *maxDuration > 0 {
+	if provided("max-duration") && *maxDuration > 0 {
 		cfg.Security.MaxDuration = *maxDuration
+	}
+	if provided("n", "dry-run") {
+		cfg.General.DryRun = *dryRun
 	}
 	if err := cfg.Validate(); err != nil {
 		fmt.Fprintf(os.Stderr, "[!] Invalid configuration: %v\n", err)
@@ -253,7 +270,7 @@ func main() {
 		os.Exit(3)
 	}
 
-	if cfg.General.DryRun || *dryRun {
+	if cfg.General.DryRun {
 		for _, p := range all {
 			fmt.Fprintf(os.Stderr, "[DRY] %s %s\n", p.Method, p.URL)
 		}
@@ -353,6 +370,20 @@ func main() {
 		}
 		logger.Ok("Findings: %s", outPath)
 	}
+	if *sarifPath != "" {
+		if err := sarif.Write(*sarifPath, findings, *target, Version); err != nil {
+			logger.Err("SARIF write failed: %v", err)
+			os.Exit(2)
+		}
+		logger.Ok("SARIF: %s", *sarifPath)
+	}
+	if *junitPath != "" {
+		if err := cicd.WriteJUnit(*junitPath, findings); err != nil {
+			logger.Err("JUnit write failed: %v", err)
+			os.Exit(2)
+		}
+		logger.Ok("JUnit: %s", *junitPath)
+	}
 
 	if len(findings) > 0 {
 		os.Exit(10)
@@ -384,6 +415,8 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  --allow-host HOST             Exact allowed hostname (repeatable)")
 	fmt.Fprintln(w, "  -ms, --match-status CODES     Display selected status codes, comma-separated")
 	fmt.Fprintln(w, "  -o, --output PATH             Write findings as JSONL")
+	fmt.Fprintln(w, "      --sarif PATH              Write findings as SARIF")
+	fmt.Fprintln(w, "      --junit PATH              Write findings as JUnit XML")
 	fmt.Fprintln(w, "  -n, --dry-run                 Print planned requests without sending them")
 	fmt.Fprintln(w, "  --no-retest                   Skip replay verification")
 	fmt.Fprintln(w, "  -q, --quiet                   Quiet mode")

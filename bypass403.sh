@@ -171,13 +171,7 @@ print_separator() {
     for ((i=0; i<width; i++)); do
         output+="$char"
     done
-    printf '%s%s%s%s\n' "$DIM" "$output" "$char" "$RESET"
-}
-
-print_header() {
-    local title="$1"
-    printf '\n%s%s[ %s ]%s\n' "$BOLD" "$CYAN" "$title" "$RESET"
-    print_separator
+    printf '%s%s%s\n' "$DIM" "$output" "$RESET"
 }
 
 # ============================================

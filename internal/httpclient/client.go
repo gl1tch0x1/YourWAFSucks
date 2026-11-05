@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"golang.org/x/net/http2"
-	"crypto/tls"
 )
 
 type Config struct {
@@ -47,13 +46,14 @@ type Client struct {
 	initErr  error
 }
 
+type followRedirectKey struct{}
+
 func New(cfg Config) *Client {
 	transport := &http.Transport{
 		MaxIdleConns:        200,
 		MaxIdleConnsPerHost: 100,
 		IdleConnTimeout:     30 * time.Second,
 		DisableCompression:  false,
-		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
 	}
 
 	client := &Client{cfg: cfg}
@@ -73,6 +73,9 @@ func New(cfg Config) *Client {
 		Timeout:   cfg.Timeout,
 		Transport: transport,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if follow, ok := req.Context().Value(followRedirectKey{}).(bool); !ok || !follow {
+				return http.ErrUseLastResponse
+			}
 			if !hostAllowed(req.URL.Hostname(), cfg.AllowedHosts) {
 				return ErrHostNotAllowed
 			}
@@ -143,6 +146,7 @@ func (c *Client) RequestsMade() int64 {
 }
 
 func (c *Client) do(ctx context.Context, r Request) (*Response, error) {
+	ctx = context.WithValue(ctx, followRedirectKey{}, r.Follow)
 	body := bytes.NewReader(r.Body)
 	req, err := http.NewRequestWithContext(ctx, r.Method, r.URL, body)
 	if err != nil {

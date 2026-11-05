@@ -1,0 +1,76 @@
+name: YourWAFSucks Authorization Scan
+#
+# Example CI/CD workflow. Runs an authorized access-control assessment and
+# publishes SARIF results to GitHub code scanning. Only run this against
+# systems you are explicitly authorized to test.
+#
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Target URL (must be authorized)"
+        required: true
+      allow_host:
+        description: "Exact allowed hostname for the target"
+        required: true
+  # schedule:
+  #   - cron: "0 3 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  bypass403:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Build engine
+        run: |
+          go mod download
+          mkdir -p bin
+          go build -ldflags "-s -w" -o bin/bypass403-go ./cmd/bypass403
+
+      - name: Run assessment
+        id: scan
+        env:
+          TARGET: ${{ github.event.inputs.target }}
+          ALLOW_HOST: ${{ github.event.inputs.allow_host }}
+        run: |
+          set +e
+          ./bin/bypass403-go \
+            -u "$TARGET" \
+            --allow-host "$ALLOW_HOST" \
+            -k all \
+            --sarif bypass403.sarif \
+            --junit bypass403-junit.xml \
+            --max-requests 5000 \
+            --max-duration 30m \
+            --no-retest \
+            -o findings.jsonl
+          code=$?
+          # Exit code 10 means findings were reported; do not fail the job yet.
+          if [ "$code" -ne 0 ] && [ "$code" -ne 10 ]; then
+            exit "$code"
+          fi
+
+      - name: Upload SARIF
+        if: always() && hashFiles('bypass403.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: bypass403.sarif
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bypass403-reports
+          path: |
+            findings.jsonl
+            bypass403.sarif
+            bypass403-junit.xml
